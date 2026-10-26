@@ -2,6 +2,7 @@
    Generated from the approved brand guideline.
    Components must use semantic tokens, never core palette tokens or hex values. */
 
+
 :root {
   color-scheme: light;
   /* Core palette: reference by semantic layer only */
