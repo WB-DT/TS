@@ -3,12 +3,17 @@
   "$description": "ThemeStyle design tokens for ACT Stage 1, based on the Midnight Calm v2.0 brand guideline.",
   "meta": {
     "name": "ThemeStyle",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "defaultTheme": "light",
     "defaultAccent": "ink",
     "defaultDensity": "comfortable",
-    "cssFile": "ThemeStyle.css",
-    "generatedOn": "2026-10-26"
+    "cssFile": "ThemeStyle.fixed.css",
+    "generatedOn": "2026-10-27",
+    "sourceDocuments": [
+      "Theme Guidelines_v2.0.docx",
+      "AM Master Requirements.docx"
+    ],
+    "responsivePolicy": "Desktop comfortable; tablet and phone touch; phone uses bottom primary navigation."
   },
   "core": {
     "color": {
@@ -1077,6 +1082,22 @@
     "button-lg": {
       "$type": "string",
       "$value": "600 16px/24px var(--font-sans)"
+    },
+    "phone-page-title": {
+      "$type": "string",
+      "$value": "600 22px/28px var(--font-sans)"
+    },
+    "phone-body": {
+      "$type": "string",
+      "$value": "400 16px/24px var(--font-sans)"
+    },
+    "phone-body-sm": {
+      "$type": "string",
+      "$value": "400 15px/22px var(--font-sans)"
+    },
+    "phone-caption": {
+      "$type": "string",
+      "$value": "400 13px/18px var(--font-sans)"
     }
   },
   "layout": {
@@ -1125,6 +1146,24 @@
         "$type": "dimension",
         "$value": "1536px"
       }
+    },
+    "mobileNavigation": {
+      "type": "bottom-tab-bar",
+      "height": {
+        "$type": "dimension",
+        "$value": "64px"
+      },
+      "items": {
+        "$type": "number",
+        "$value": 5
+      },
+      "labels": [
+        "Dashboard",
+        "Customers",
+        "Planner",
+        "Messages",
+        "More"
+      ]
     }
   },
   "density": {
@@ -1245,6 +1284,34 @@
         "border": "{semantic.light.border.control}",
         "radius": "{core.radius.md}"
       }
+    }
+  },
+  "preferences": {
+    "contrast": {
+      "default": "standard",
+      "supported": [
+        "standard",
+        "high"
+      ],
+      "attribute": "data-contrast"
+    },
+    "theme": {
+      "default": "light",
+      "supported": [
+        "light",
+        "dark",
+        "system"
+      ],
+      "attribute": "data-theme"
+    },
+    "density": {
+      "default": "comfortable",
+      "supported": [
+        "comfortable",
+        "compact",
+        "touch"
+      ],
+      "attribute": "data-density"
     }
   }
 }
