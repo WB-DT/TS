@@ -14503,5 +14503,30 @@ img,svg,canvas,video,iframe,table{max-width:100%}
  setContext(localStorage.getItem('actNavigationContext')==='account'?'account':'rep');
 })();
 </script>
+
+<script id="themestyle-last-load-bootstrap">
+(function () {
+  function loadThemeStyleLast() {
+    document.querySelectorAll('link[data-design-system], link[href$="ThemeStyle.css"]').forEach(function (link) {
+      link.remove();
+    });
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'ThemeStyle.css?v=2.0.1';
+    link.dataset.designSystem = 'Midnight Calm v2.0.1';
+    link.onload = function () { document.documentElement.classList.add('themestyle-loaded'); };
+    link.onerror = function () {
+      document.documentElement.classList.add('themestyle-missing');
+      console.error('ThemeStyle.css could not be loaded. Keep ThemeStyle.css in the same folder as this HTML file.');
+    };
+    document.head.appendChild(link);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadThemeStyleLast, { once: true });
+  } else {
+    loadThemeStyleLast();
+  }
+})();
+</script>
 </body>
 </html>
