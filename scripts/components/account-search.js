@@ -16,8 +16,7 @@
  */
 
 import {
-  createSafeElement,
-  setSafeText
+  createSafeElement
 } from "../security.js";
 
 const MINIMUM_SEARCH_LENGTH = 2;
