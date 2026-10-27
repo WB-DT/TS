@@ -1,4 +1,4 @@
-/* ThemeStyle v2.0 - Midnight Calm foundation + ACT adapter */
+/* ThemeStyle v2.0.1 - Midnight Calm foundation + CRM adapter */
 :root{
  color-scheme:light;--font-sans:Inter,"Segoe UI",Roboto,Arial,sans-serif;
  --surface-canvas:#fafbfc;--surface-card:#fff;--surface-raised:#fff;--surface-sunken:#f5f6f8;--surface-hover:#f5f6f8;--surface-pressed:#edeff3;--surface-sidebar:#1b1e2c;--surface-sidebar-hover:#272b3b;--surface-selected:#f2f3f7;
@@ -40,3 +40,122 @@
 @media(max-width:390px){.act1-kpis{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){#act-stage1-shell *,#act-reference-sidebar *{animation:none!important;transition:none!important}}
 @media print{#act-reference-sidebar,#act-reference-topbar,.act1-tabs,.act1-actions{display:none!important}#act-stage1-shell{border:0}.act1-view{display:block!important;padding:0}.act1-card,.act1-kpi{break-inside:avoid}}
+
+/* =========================================================
+   v2.0.1 alignment layer
+   Aligns ThemeStyle.css with Theme Guidelines v2.0 and the
+   Account Management responsive shell requirements.
+   ========================================================= */
+:root {
+  --shadow-none: none;
+  --shadow-xs: 0 1px 2px rgba(21,25,35,.04);
+  --shadow-md: 0 6px 16px rgba(21,25,35,.08);
+  --shadow-lg: 0 16px 40px rgba(21,25,35,.12);
+  --shadow-drag: 0 12px 24px rgba(21,25,35,.16);
+  --motion-instant: 80ms;
+  --motion-slow: 300ms;
+  --ease-enter: cubic-bezier(0,0,0,1);
+  --ease-exit: cubic-bezier(.3,0,1,1);
+  --z-sidebar: 200;
+  --z-dropdown: 1000;
+  --z-drawer: 1100;
+  --z-modal: 1200;
+  --z-toast: 1300;
+  --z-tooltip: 1400;
+  --content-max-width: 1440px;
+  --content-gutter: 24px;
+  --drawer-width: 560px;
+  --nav-item-height: 44px;
+  --text-display: 600 32px/40px var(--font-sans);
+  --text-h1: 600 26px/32px var(--font-sans);
+  --text-body-lg: 400 16px/24px var(--font-sans);
+  --text-button-sm: 600 13px/18px var(--font-sans);
+  --text-button-lg: 600 16px/24px var(--font-sans);
+  --icon-default: var(--text-secondary);
+  --icon-decorative: var(--text-disabled);
+  --action-control-fg: #fff;
+  --action-danger: #d1343a;
+  --action-danger-hover: #b4232a;
+}
+
+[data-theme="dark"] {
+  --text-sidebar: #f0f1f6;
+  --text-sidebar-muted: #9aa0b3;
+  --nav-active-fg: #fff;
+  --brand-mark: #a7aebe;
+  --icon-default: #b8bdcc;
+  --icon-decorative: #787e94;
+  --action-control-fg: #13151f;
+  --action-danger: #c5313a;
+  --action-danger-hover: #a82830;
+  --shadow-xs: 0 1px 2px rgba(0,0,0,.24);
+  --shadow-md: 0 8px 20px rgba(0,0,0,.32);
+  --shadow-lg: 0 18px 48px rgba(0,0,0,.42);
+  --shadow-drag: 0 14px 30px rgba(0,0,0,.48);
+}
+
+[data-density="compact"] { --nav-item-height: 36px; }
+[data-density="touch"] { --nav-item-height: 48px; }
+.ref-nav-button { height: var(--nav-item-height) !important; }
+
+/* Optional accent presets. Ink remains the default. */
+[data-accent="ocean"] { --action-primary:#2563eb;--action-primary-hover:#1d4ed8;--action-primary-pressed:#1e40af;--action-control:#2563eb;--focus-outline:#2563eb;--text-link:#1d4ed8; }
+[data-accent="evergreen"] { --action-primary:#1f7a5c;--action-primary-hover:#19654c;--action-primary-pressed:#134d3b;--action-control:#1f7a5c;--focus-outline:#1f7a5c;--text-link:#19654c; }
+[data-accent="violet"] { --action-primary:#5b3fe0;--action-primary-hover:#4930bd;--action-primary-pressed:#382592;--action-control:#5b3fe0;--focus-outline:#5b3fe0;--text-link:#4930bd; }
+/* Warm brands remain ink-led so warning and danger meanings stay distinct. */
+[data-accent="terracotta"] { --brand-mark:#c2502a; }
+
+/* High contrast is an explicit field-use preference. */
+[data-contrast="high"] {
+  --text-secondary:#343b49;
+  --text-tertiary:#414b5d;
+  --border-default:#a1a7b4;
+  --border-control:#505a6b;
+}
+[data-theme="dark"][data-contrast="high"] {
+  --text-secondary:#e5e8ef;
+  --text-tertiary:#cbd0db;
+  --border-default:#787e94;
+  --border-control:#b8bdcc;
+}
+
+/* Use the system preference only when the document has no explicit theme. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --surface-canvas:#13151f;--surface-card:#1b1e2c;--surface-raised:#272b3b;--surface-sunken:#161925;--surface-hover:#272b3b;--surface-pressed:#353a4c;--surface-sidebar:#0d0f17;--surface-sidebar-hover:#1b1e2c;--surface-selected:#2f3342;
+    --border-subtle:#252938;--border-default:#353a4c;--border-control:#787e94;--border-neutral-button:#4a5066;--border-accent:#7e879b;--border-sidebar-divider:#272b3b;
+    --text-primary:#f0f1f6;--text-secondary:#b8bdcc;--text-tertiary:#9aa0b3;--text-disabled:#4a5066;--text-link:#cbd0db;--text-on-action:#13161f;
+    --action-primary:#e5e8ef;--action-primary-hover:#cbd0db;--action-primary-pressed:#a7aebe;--action-primary-disabled:#4a5066;--action-control:#e5e8ef;--focus-outline:#cbd0db;
+  }
+}
+
+/* Tablet and phone use touch density automatically. */
+@media (max-width:1279px) {
+  :root { --control-height:52px;--button-height:48px;--row-height:56px;--nav-item-height:48px; }
+}
+
+/* Phone shell: the primary navigation becomes a bottom tab bar. */
+@media (max-width:767px) {
+  :root {
+    --content-gutter:16px;
+    --text-h1:600 22px/28px var(--font-sans);
+    --text-body:400 16px/24px var(--font-sans);
+    --text-body-sm:400 15px/22px var(--font-sans);
+    --text-caption:400 13px/18px var(--font-sans);
+  }
+  #main-app-container { padding-bottom:72px !important; }
+  #act-reference-sidebar {
+    position:fixed !important;inset:auto 0 0 0 !important;z-index:var(--z-sidebar) !important;
+    width:100% !important;min-height:64px !important;padding:var(--space-2) !important;
+    border-top:1px solid var(--border-sidebar-divider) !important;
+  }
+  #act-reference-sidebar .ref-brand,
+  #act-reference-sidebar .ref-nav-label,
+  #act-reference-sidebar .act-context-switch,
+  #act-reference-sidebar .act-selected-account,
+  #act-reference-sidebar .act-nav-submenu { display:none !important; }
+  #act-reference-sidebar .ref-nav { display:grid !important;grid-template-columns:repeat(5,minmax(0,1fr)) !important;overflow:visible !important;padding:0 !important; }
+  #act-reference-sidebar .ref-nav-button { justify-content:center !important;min-width:0 !important;height:48px !important;padding:0 var(--space-1) !important; }
+  #act-reference-sidebar .ref-nav-button span { font:var(--text-caption) !important; }
+}
