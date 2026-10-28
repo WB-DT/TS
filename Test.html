@@ -1,680 +1,358 @@
 <!doctype html>
-<html
-  lang="en"
-  data-theme="light"
-  data-accent="ink"
-  data-density="comfortable"
-  data-contrast="standard"
->
+<html data-accent="ink" data-contrast="standard" data-density="comfortable" data-theme="light" lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1"
-  >
-  <meta
-    name="color-scheme"
-    content="light dark"
-  >
-  <meta
-    name="theme-color"
-    content="#FAFBFC"
-  >
-
-  <title>ACT CRM Stage 1</title>
-
-<link
-  rel="stylesheet"
-  href="ThemeStyle.css"
->
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="light dark" name="color-scheme"/>
+<meta content="#FAFBFC" name="theme-color"/>
+<title>ACT CRM | Account Communication</title>
+<link href="ThemeStyle.updated.css" rel="stylesheet"/>
 </head>
-
 <body>
-<a
-  class="skip-link"
-  href="#main-content"
->
+<a class="skip-link" href="#main-content">
   Skip to main content
 </a>
-
-  <div
-    class="app-status"
-    data-app-status
-    role="status"
-    aria-live="polite"
-    aria-atomic="true"
-  ></div>
-
-  <div class="crm-app">
-    <aside
-      class="crm-sidebar"
-      aria-label="Primary navigation"
-    >
-      <div class="crm-brand">
-        <div
-          class="crm-brand-mark"
-          aria-hidden="true"
-        >
+<div aria-atomic="true" aria-live="polite" class="app-status" data-app-status="" role="status"></div>
+<div class="crm-app">
+<aside aria-label="Primary navigation" class="crm-sidebar">
+<div class="crm-brand">
+<div aria-hidden="true" class="crm-brand-mark">
           A
         </div>
-
-        <div class="crm-brand-copy">
-          <strong>ACT CRM</strong>
-          <span>Account Communication</span>
-        </div>
-      </div>
-
-      <nav
-        class="crm-nav"
-        aria-label="Stage 1 navigation"
-      >
-        <div class="crm-nav-list">
-          <a
-            class="crm-nav-link active"
-            href="#communication-overview"
-            aria-current="page"
-          >
-            <span>Dashboard</span>
-          </a>
-
-          <a
-            class="crm-nav-link"
-            href="#account-search"
-          >
-            <span>Customers</span>
-          </a>
-
-          <a
-            class="crm-nav-link"
-            href="#communication-form"
-          >
-            <span>Communication</span>
-          </a>
-
-          <a
-            class="crm-nav-link"
-            href="#follow-ups"
-          >
-            <span>Tasks</span>
-          </a>
-
-          <a
-            class="crm-nav-link"
-            href="#communication-history"
-          >
-            <span>History</span>
-          </a>
-        </div>
-      </nav>
-    </aside>
-
-    <header class="crm-topbar">
-      <form
-        id="account-search"
-        class="crm-search"
-        role="search"
-        data-account-search-form
-      >
-        <label
-          class="visually-hidden"
-          for="account-search-input"
-        >
+<div class="crm-brand-copy">
+<strong>ACT CRM</strong>
+<span>Account Communication</span>
+</div>
+<button aria-label="Open app launcher" class="crm-icon-btn" title="App launcher" type="button">Apps</button></div><button aria-expanded="false" aria-haspopup="menu" class="crm-location-switcher" data-location-switcher="" type="button"><span aria-hidden="true">Location</span><strong>Daytona</strong><span aria-hidden="true">▾</span></button>
+<nav aria-label="Stage 1 navigation" class="crm-nav"><p class="crm-eyebrow">Workspace</p>
+<div class="crm-nav-list">
+<a aria-current="page" class="crm-nav-link active" href="#communication-overview"><span aria-hidden="true" class="crm-nav-icon">⌂</span>
+<span>Dashboard</span>
+</a>
+<a class="crm-nav-link" href="#account-search"><span aria-hidden="true" class="crm-nav-icon">◎</span>
+<span>Customers</span>
+</a>
+<a class="crm-nav-link" href="#communication-form"><span aria-hidden="true" class="crm-nav-icon">✉</span>
+<span>Communication</span>
+</a>
+<a class="crm-nav-link" href="#follow-ups"><span aria-hidden="true" class="crm-nav-icon">✓</span>
+<span>Tasks</span>
+</a>
+<a class="crm-nav-link" href="#communication-history"><span aria-hidden="true" class="crm-nav-icon">◷</span>
+<span>History</span>
+</a>
+</div>
+</nav><button aria-expanded="true" class="crm-sidebar-collapse" data-sidebar-toggle="" type="button">Collapse sidebar</button>
+</aside>
+<header class="crm-topbar">
+<form class="crm-search" data-account-search-form="" id="account-search" role="search">
+<label class="visually-hidden" for="account-search-input">
           Search authorized accounts
         </label>
-
-        <input
-          id="account-search-input"
-          name="accountSearch"
-          type="search"
-          placeholder="Search authorized accounts"
-          autocomplete="off"
-          data-account-search-input
-        >
-
-        <button
-          class="btn"
-          type="submit"
-        >
+<input autocomplete="off" data-account-search-input="" id="account-search-input" name="accountSearch" placeholder="Search authorized accounts" type="search"/>
+<button class="btn crm-button" type="submit">
           Search
         </button>
-      </form>
-
-      <div class="crm-top-actions">
-        <button
-          class="crm-icon-btn"
-          type="button"
-          data-theme-toggle
-          aria-label="Switch color theme"
-          aria-pressed="false"
-        >
-          Theme
-        </button>
-
-        <div
-          class="crm-avatar"
-          aria-label="Signed-in user"
-        >
-          JR
-        </div>
-      </div>
-    </header>
-
-    <main
-      id="main-content"
-      class="crm-main"
-      tabindex="-1"
-    >
-      <div class="crm-content">
-        <section
-          class="account-search-results"
-          aria-label="Account search results"
-          aria-live="polite"
-          data-account-search-results
-        ></section>
-
-        <section
-          class="crm-card account-hero"
-          aria-labelledby="selected-account-name"
-          data-account-header
-        >
-          <div class="account-hero-main">
-            <div
-              class="account-monogram"
-              data-account-initials
-              aria-hidden="true"
-            >
+</form>
+<div class="crm-top-actions"><button aria-label="Open help" class="crm-icon-btn" title="Help" type="button">Help</button><button aria-label="Open chat" class="crm-icon-btn" title="Chat" type="button">Chat</button><button aria-label="Open notifications" class="crm-icon-btn" title="Notifications" type="button">Notifications</button><button aria-label="Switch color theme" aria-pressed="false" class="crm-icon-btn" data-theme-toggle="" title="Theme" type="button">Theme</button><button aria-label="Open user menu" class="crm-avatar" title="User menu" type="button">JR</button></div>
+</header>
+<main class="crm-main" id="main-content" tabindex="-1">
+<div class="crm-content">
+<header class="crm-page-header">
+<div>
+<p class="crm-eyebrow">Account workspace</p>
+<h1>Customer communications</h1>
+<p>Review activity, manage follow-ups, and record account communication.</p>
+</div>
+<div aria-label="Page actions" class="crm-page-actions">
+<a class="btn crm-button" href="#communication-history">View history</a>
+<a class="btn btn-primary crm-button" href="#communication-form">Log communication</a>
+</div>
+</header><section aria-label="Account search results" aria-live="polite" class="account-search-results" data-account-search-results=""></section>
+<section aria-label="Selected account" aria-labelledby="selected-account-name" class="crm-card account-hero crm-account-hero crm-record-header" data-account-header="">
+<div class="account-hero-main">
+<div aria-hidden="true" class="account-monogram" data-account-initials="">
               --
             </div>
-
-            <div class="account-summary">
-              <div class="account-title-row">
-                <h1
-                  id="selected-account-name"
-                  data-account-name
-                >
+<div class="account-summary">
+<div class="account-title-row">
+<h2 data-account-name="" id="selected-account-name">
                   Select an account
-                </h1>
-
-                <span
-                  class="status-pill"
-                  data-account-status
-                >
+                </h2>
+<span class="status-pill crm-chip" data-account-status="">
                   No account selected
                 </span>
-              </div>
-
-              <div class="account-meta">
-                <span class="meta-pill">
-                  <span class="visually-hidden">
+</div>
+<div class="account-meta">
+<span class="meta-pill">
+<span class="visually-hidden">
                     Account number:
                   </span>
-
-                  <span data-account-number>
+<span data-account-number="">
                     Account number unavailable
                   </span>
-                </span>
-
-                <span class="meta-pill">
-                  <span class="visually-hidden">
+</span>
+<span class="meta-pill">
+<span class="visually-hidden">
                     Location:
                   </span>
-
-                  <span data-account-location>
+<span data-account-location="">
                     Location unavailable
                   </span>
-                </span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section
-          id="communication-overview"
-          aria-labelledby="communication-overview-heading"
-        >
-          <div class="section-heading">
-            <div>
-              <h2 id="communication-overview-heading">
+</span>
+</div>
+</div>
+</div>
+<dl aria-label="Account key facts" class="crm-key-facts">
+<div><dt>Owner</dt><dd>Assigned representative</dd></div>
+<div><dt>Primary contact</dt><dd>Not selected</dd></div>
+<div><dt>Account type</dt><dd>Customer</dd></div>
+<div><dt>Last updated</dt><dd>Awaiting account selection</dd></div>
+</dl></section>
+<nav aria-label="Account sections" class="crm-tabs">
+<a aria-current="page" href="#communication-overview">Overview</a>
+<a href="#communication-history">Activity</a>
+<a href="#follow-ups">Follow-ups</a>
+<a href="#communication-form">Notes</a>
+</nav><section aria-labelledby="communication-overview-heading" id="communication-overview">
+<div class="section-heading">
+<div>
+<h2 id="communication-overview-heading">
                 Communication overview
               </h2>
-
-              <p>
+<p>
                 Communication activity and follow-up accountability
                 for the selected account.
               </p>
-            </div>
-          </div>
-
-          <div
-            class="metric-strip"
-            aria-label="Communication metrics"
-          >
-            <article class="metric">
-              <span class="metric-label">Total calls</span>
-              <strong data-metric="total-calls">0</strong>
-            </article>
-
-            <article class="metric">
-              <span class="metric-label">Connected calls</span>
-              <strong data-metric="connected-calls">0</strong>
-              <small>
-                <span data-metric="connection-rate">0%</span>
+</div>
+</div>
+<div aria-label="Communication metrics" class="metric-strip crm-metrics">
+<article class="metric crm-card crm-metric-tile">
+<span class="metric-label">Total calls</span>
+<strong data-metric="total-calls">0</strong>
+</article>
+<article class="metric crm-card crm-metric-tile">
+<span class="metric-label">Connected calls</span>
+<strong data-metric="connected-calls">0</strong>
+<small>
+<span data-metric="connection-rate">0%</span>
                 connection rate
               </small>
-            </article>
-
-            <article class="metric">
-              <span class="metric-label">Talk time</span>
-              <strong data-metric="talk-time">0 min</strong>
-              <small>
-                <span data-metric="average-talk-time">0 min</span>
+</article>
+<article class="metric crm-card crm-metric-tile">
+<span class="metric-label">Talk time</span>
+<strong data-metric="talk-time">0 min</strong>
+<small>
+<span data-metric="average-talk-time">0 min</span>
                 average
               </small>
-            </article>
-
-            <article class="metric">
-              <span class="metric-label">Emails sent</span>
-              <strong data-metric="emails-sent">0</strong>
-            </article>
-
-            <article class="metric">
-              <span class="metric-label">Follow-ups due</span>
-              <strong data-metric="follow-ups-due">0</strong>
-            </article>
-
-            <article class="metric">
-              <span class="metric-label">Last activity</span>
-              <strong data-metric="last-activity">No activity</strong>
-            </article>
-          </div>
-        </section>
-
-        <div class="dashboard-grid">
-          <section
-            id="communication-history"
-            class="crm-card panel"
-            aria-labelledby="communication-history-heading"
-          >
-            <div class="panel-title">
-              <h2 id="communication-history-heading">
+</article>
+<article class="metric crm-card crm-metric-tile">
+<span class="metric-label">Emails sent</span>
+<strong data-metric="emails-sent">0</strong>
+</article>
+<article class="metric crm-card crm-metric-tile">
+<span class="metric-label">Follow-ups due</span>
+<strong data-metric="follow-ups-due">0</strong>
+</article>
+<article class="metric crm-card crm-metric-tile">
+<span class="metric-label">Last activity</span>
+<strong data-metric="last-activity">No activity</strong>
+</article>
+</div>
+</section>
+<div class="dashboard-grid crm-page-grid">
+<section aria-labelledby="communication-history-heading" class="crm-card panel" id="communication-history">
+<div class="panel-title">
+<h2 id="communication-history-heading">
                 Communication history
               </h2>
-            </div>
-
-            <p
-              class="component-status"
-              data-communication-history-status
-              role="status"
-              aria-live="polite"
-            >
+</div>
+<p aria-live="polite" class="component-status crm-muted" data-communication-history-status="" role="status">
               No communication history is available for this account.
             </p>
-
-            <ol
-              class="communication-history-list"
-              data-communication-history-list
-            ></ol>
-          </section>
-
-          <section
-            id="follow-ups"
-            class="crm-card panel"
-            aria-labelledby="follow-up-heading"
-          >
-            <div class="panel-title">
-              <h2 id="follow-up-heading">
+<ol class="communication-history-list" data-communication-history-list=""></ol>
+</section>
+<section aria-labelledby="follow-up-heading" class="crm-card panel" id="follow-ups">
+<div class="panel-title">
+<h2 id="follow-up-heading">
                 Follow-ups
               </h2>
-            </div>
-
-            <p
-              class="component-status"
-              data-follow-up-status
-              role="status"
-              aria-live="polite"
-            >
+</div>
+<p aria-live="polite" class="component-status crm-muted" data-follow-up-status="" role="status">
               No open follow-ups are available for this account.
             </p>
-
-            <ul
-              class="follow-up-list"
-              data-follow-up-list
-            ></ul>
-          </section>
-        </div>
-
-        <section
-          id="communication-form"
-          class="crm-card panel communication-form-panel"
-          aria-labelledby="communication-form-heading"
-        >
-          <div class="panel-title">
-            <div>
-              <h2 id="communication-form-heading">
+<ul class="follow-up-list" data-follow-up-list=""></ul>
+</section>
+</div>
+<section aria-labelledby="communication-form-heading" class="crm-card panel communication-form-panel" id="communication-form">
+<div class="panel-title">
+<div>
+<h2 id="communication-form-heading">
                 Log communication
               </h2>
-
-              <p>
+<p>
                 Record the communication outcome and any required
                 follow-up.
               </p>
-            </div>
-          </div>
-
-          <form
-            class="communication-form"
-            data-communication-form
-            novalidate
-          >
-            <div
-              class="form-error-summary"
-              data-form-error-summary
-              role="alert"
-              tabindex="-1"
-              hidden
-            ></div>
-
-            <div class="form-grid">
-              <div class="field">
-                <label for="communication-contact">
+</div>
+</div><div class="crm-alert crm-alert--info" role="status">
+<strong>Account context required.</strong>
+  Select an authorized account before saving communication or assigning a follow-up.
+</div>
+<form class="communication-form" data-communication-form="" novalidate="">
+<div class="form-error-summary" data-form-error-summary="" hidden="" role="alert" tabindex="-1"></div>
+<div class="form-grid">
+<div class="field">
+<label for="communication-contact">
                   Contact
                 </label>
-
-                <select
-                  id="communication-contact"
-                  name="contactId"
-                >
-                  <option value="">
+<select id="communication-contact" name="contactId">
+<option value="">
                     No contact selected
                   </option>
-                </select>
-
-                <p
-                  class="field-error"
-                  data-field-error="contactId"
-                  hidden
-                ></p>
-              </div>
-
-              <div class="field">
-                <label for="communication-type">
+</select>
+<p class="field-error" data-field-error="contactId" hidden=""></p>
+</div>
+<div class="field">
+<label for="communication-type">
                   Communication type
                 </label>
-
-                <select
-                  id="communication-type"
-                  name="type"
-                  required
-                  aria-describedby="communication-type-error"
-                >
-                  <option value="">
+<select aria-describedby="communication-type-error" id="communication-type" name="type" required="">
+<option value="">
                     Select a type
                   </option>
-
-                  <option value="CALL">
+<option value="CALL">
                     Call
                   </option>
-
-                  <option value="EMAIL">
+<option value="EMAIL">
                     Email
                   </option>
-
-                  <option value="MEETING">
+<option value="MEETING">
                     Meeting
                   </option>
-
-                  <option value="NOTE">
+<option value="NOTE">
                     Note
                   </option>
-                </select>
-
-                <p
-                  id="communication-type-error"
-                  class="field-error"
-                  data-field-error="type"
-                  hidden
-                ></p>
-              </div>
-
-              <div class="field">
-                <label for="communication-direction">
+</select>
+<p class="field-error" data-field-error="type" hidden="" id="communication-type-error"></p>
+</div>
+<div class="field">
+<label for="communication-direction">
                   Direction
                 </label>
-
-                <select
-                  id="communication-direction"
-                  name="direction"
-                  required
-                  aria-describedby="communication-direction-error"
-                >
-                  <option value="">
+<select aria-describedby="communication-direction-error" id="communication-direction" name="direction" required="">
+<option value="">
                     Select a direction
                   </option>
-
-                  <option value="OUTBOUND">
+<option value="OUTBOUND">
                     Outbound
                   </option>
-
-                  <option value="INBOUND">
+<option value="INBOUND">
                     Inbound
                   </option>
-
-                  <option value="INTERNAL">
+<option value="INTERNAL">
                     Internal
                   </option>
-                </select>
-
-                <p
-                  id="communication-direction-error"
-                  class="field-error"
-                  data-field-error="direction"
-                  hidden
-                ></p>
-              </div>
-
-              <div class="field">
-                <label for="communication-outcome">
+</select>
+<p class="field-error" data-field-error="direction" hidden="" id="communication-direction-error"></p>
+</div>
+<div class="field">
+<label for="communication-outcome">
                   Outcome
                 </label>
-
-                <select
-                  id="communication-outcome"
-                  name="outcomeCode"
-                  required
-                  aria-describedby="communication-outcome-error"
-                >
-                  <option value="">
+<select aria-describedby="communication-outcome-error" id="communication-outcome" name="outcomeCode" required="">
+<option value="">
                     Select an outcome
                   </option>
-
-                  <option value="CONNECTED">
+<option value="CONNECTED">
                     Connected
                   </option>
-
-                  <option value="LEFT_VOICEMAIL">
+<option value="LEFT_VOICEMAIL">
                     Left voicemail
                   </option>
-
-                  <option value="NO_ANSWER">
+<option value="NO_ANSWER">
                     No answer
                   </option>
-
-                  <option value="EMAIL_SENT">
+<option value="EMAIL_SENT">
                     Email sent
                   </option>
-
-                  <option value="FOLLOW_UP_REQUIRED">
+<option value="FOLLOW_UP_REQUIRED">
                     Follow-up required
                   </option>
-
-                  <option value="INFORMATION_ONLY">
+<option value="INFORMATION_ONLY">
                     Information only
                   </option>
-
-                  <option value="WRONG_CONTACT">
+<option value="WRONG_CONTACT">
                     Wrong contact
                   </option>
-
-                  <option value="DO_NOT_CONTACT">
+<option value="DO_NOT_CONTACT">
                     Do not contact
                   </option>
-
-                  <option value="RESOLVED">
+<option value="RESOLVED">
                     Resolved
                   </option>
-                </select>
-
-                <p
-                  id="communication-outcome-error"
-                  class="field-error"
-                  data-field-error="outcomeCode"
-                  hidden
-                ></p>
-              </div>
-
-              <div class="field">
-                <label for="communication-duration">
+</select>
+<p class="field-error" data-field-error="outcomeCode" hidden="" id="communication-outcome-error"></p>
+</div>
+<div class="field">
+<label for="communication-duration">
                   Duration in minutes
                 </label>
-
-                <input
-                  id="communication-duration"
-                  name="durationMinutes"
-                  type="number"
-                  min="0"
-                  step="1"
-                  inputmode="numeric"
-                  aria-describedby="communication-duration-error"
-                >
-
-                <p
-                  id="communication-duration-error"
-                  class="field-error"
-                  data-field-error="durationMinutes"
-                  hidden
-                ></p>
-              </div>
-
-              <div class="field full">
-                <label for="communication-notes">
+<input aria-describedby="communication-duration-error" id="communication-duration" inputmode="numeric" min="0" name="durationMinutes" step="1" type="number"/>
+<p class="field-error" data-field-error="durationMinutes" hidden="" id="communication-duration-error"></p>
+</div>
+<div class="field full">
+<label for="communication-notes">
                   Communication notes
                 </label>
-
-                <textarea
-                  id="communication-notes"
-                  name="notes"
-                  maxlength="4000"
-                  required
-                  aria-describedby="communication-notes-help communication-notes-error"
-                ></textarea>
-
-                <p
-                  id="communication-notes-help"
-                  class="field-help"
-                >
+<textarea aria-describedby="communication-notes-help communication-notes-error" id="communication-notes" maxlength="4000" name="notes" required=""></textarea>
+<p class="field-help crm-muted" id="communication-notes-help">
                   Record the reason, discussion, outcome, and next step.
                 </p>
-
-                <p
-                  id="communication-notes-error"
-                  class="field-error"
-                  data-field-error="notes"
-                  hidden
-                ></p>
-              </div>
-            </div>
-
-            <input
-              name="followUpRequired"
-              type="hidden"
-              value="false"
-            >
-
-            <fieldset
-              class="follow-up-fields"
-              data-follow-up-fields
-              hidden
-            >
-              <legend>
+<p class="field-error" data-field-error="notes" hidden="" id="communication-notes-error"></p>
+</div>
+</div>
+<input name="followUpRequired" type="hidden" value="false"/>
+<fieldset class="follow-up-fields" data-follow-up-fields="" hidden="">
+<legend>
                 Required follow-up
               </legend>
-
-              <div class="form-grid">
-                <div class="field">
-                  <label for="follow-up-date">
+<div class="form-grid">
+<div class="field">
+<label for="follow-up-date">
                     Follow-up date
                   </label>
-
-                  <input
-                    id="follow-up-date"
-                    name="followUpDate"
-                    type="date"
-                    aria-describedby="follow-up-date-error"
-                  >
-
-                  <p
-                    id="follow-up-date-error"
-                    class="field-error"
-                    data-field-error="followUpDate"
-                    hidden
-                  ></p>
-                </div>
-
-                <div class="field">
-                  <label for="follow-up-owner">
+<input aria-describedby="follow-up-date-error" id="follow-up-date" name="followUpDate" type="date"/>
+<p class="field-error" data-field-error="followUpDate" hidden="" id="follow-up-date-error"></p>
+</div>
+<div class="field">
+<label for="follow-up-owner">
                     Follow-up owner
                   </label>
-
-                  <select
-                    id="follow-up-owner"
-                    name="followUpOwnerId"
-                    aria-describedby="follow-up-owner-error"
-                  >
-                    <option value="">
+<select aria-describedby="follow-up-owner-error" id="follow-up-owner" name="followUpOwnerId">
+<option value="">
                       Select an owner
                     </option>
-                  </select>
-
-                  <p
-                    id="follow-up-owner-error"
-                    class="field-error"
-                    data-field-error="followUpOwnerId"
-                    hidden
-                  ></p>
-                </div>
-              </div>
-            </fieldset>
-
-            <p
-              class="field-error"
-              data-field-error="accountId"
-              hidden
-            ></p>
-
-            <div class="form-actions">
-              <button
-                class="btn"
-                type="reset"
-              >
+</select>
+<p class="field-error" data-field-error="followUpOwnerId" hidden="" id="follow-up-owner-error"></p>
+</div>
+</div>
+</fieldset>
+<p class="field-error" data-field-error="accountId" hidden=""></p>
+<div class="form-actions">
+<button class="btn crm-button" type="reset">
                 Clear
               </button>
-
-              <button
-                class="btn btn-primary"
-                type="submit"
-              >
+<button class="btn btn-primary crm-button" type="submit">
                 Save communication
               </button>
-            </div>
-          </form>
-        </section>
-      </div>
-    </main>
-  </div>
-
-<script
-  type="module"
-  src="scripts/app.js"
-></script>
+</div>
+</form>
+</section>
+</div>
+</main>
+</div>
+<script src="app.updated.js" type="module"></script>
 </body>
 </html>
