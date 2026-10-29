@@ -1,6 +1,8 @@
-# CRM Prototype
+# AM Prototype
 
-A clickable prototype of an internal CRM for sales reps: a rep dashboard and customer account pages. Plain HTML, CSS and JavaScript with no frameworks and no build step. All data is invented sample data, and nothing is saved: reload the page and it resets.
+**Structural Prototype**
+
+This repository contains a non-production interface prototype used to develop the application structure, navigation, responsive layout, and component system. Data connections and production workflows are not implied by this build.
 
 ## Run it
 
