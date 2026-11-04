@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="QuoteFlow">
+  <g fill="none" stroke-width="4" stroke-linecap="round">
+    <path d="M6 12 H17 C25 12 25 24 33 24" stroke="#171626"/>
+    <path d="M6 24 H33" stroke="#3B5BDB"/>
+    <path d="M6 36 H17 C25 36 25 24 33 24" stroke="#171626"/>
+    <circle cx="39" cy="24" r="5" fill="#3B5BDB" stroke="none"/>
+  </g>
+</svg>
