@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f7fa" />
+    <title>QuoteFlow | Sign in</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" aria-label="QuoteFlow" />
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="login-page">
+    <header class="login-brandbar">
+      <a class="brand login-brand" href="/login" aria-label="QuoteFlow">
+        <img class="brand-mark" src="/logo-mark-light.svg" alt="" width="48" height="48" />
+        <span class="brand-copy"><span class="brand-wordmark brand-wordmark--light"><span class="brand-wordmark-quote">Quote</span><span class="brand-wordmark-flow">Flow</span></span><span class="brand-caption">From files to quotes, faster</span></span>
+      </a>
+      <span class="work-account-label"><span class="work-account-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span> Work account</span>
+    </header>
+    <main class="login-main">
+      <section class="login-card" aria-labelledby="login-title">
+        <p class="eyebrow">QUOTEFLOW WORKSPACE</p>
+        <h1 id="login-title">Sign in</h1>
+        <p class="login-intro">Use your work account to continue.</p>
+        <form id="login-form" novalidate>
+          <div class="form-field">
+            <label for="work-email">Work email</label>
+            <input id="work-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="name@company.com" required aria-describedby="email-help" />
+            <span class="field-hint" id="email-help">Enter your assigned work email.</span>
+          </div>
+          <div class="form-field">
+            <label for="work-password">Password</label>
+            <input id="work-password" name="password" type="password" autocomplete="current-password" required />
+          </div>
+          <p class="login-error" id="login-error" role="alert" aria-live="polite" hidden></p>
+          <button class="login-submit" id="login-submit" type="submit"><span>Sign in</span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11m0 0-4-4m4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </form>
+        <details class="demo-access">
+          <summary>Demo accounts</summary>
+          <p class="demo-password">Password: <strong>demo</strong></p>
+          <ul>
+            <li><button type="button" data-demo-email="manager@demo.com"><span>manager@demo.com</span><small>Manager</small></button></li>
+            <li><button type="button" data-demo-email="reviser1@demo.com"><span>reviser1@demo.com</span><small>Reviser</small></button></li>
+            <li><button type="button" data-demo-email="reviser2@demo.com"><span>reviser2@demo.com</span><small>Reviser</small></button></li>
+            <li><button type="button" data-demo-email="quoter1@demo.com"><span>quoter1@demo.com</span><small>Quoter</small></button></li>
+            <li><button type="button" data-demo-email="quoter2@demo.com"><span>quoter2@demo.com</span><small>Quoter</small></button></li>
+            <li><button type="button" data-demo-email="qualifier1@demo.com"><span>qualifier1@demo.com</span><small>Qualifier</small></button></li>
+            <li><button type="button" data-demo-email="qualifier2@demo.com"><span>qualifier2@demo.com</span><small>Qualifier</small></button></li>
+          </ul>
+        </details>
+      </section>
+    </main>
+    <footer class="login-footer"><span>QuoteFlow</span><span>Secure quote workspace</span></footer>
+    <script src="/login.js" defer></script>
+  </body>
+</html>

@@ -1,0 +1,88 @@
+:root {
+  color-scheme: light;
+  --font-sans: "Inter", sans-serif;
+  --text-scale: 1;
+  --accent: #171626;
+  --accent-contrast: #ffffff;
+  --accent-hover: color-mix(in srgb, var(--accent) 84%, var(--surface) 16%);
+  --accent-tint: color-mix(in srgb, var(--accent) 5%, var(--surface) 95%);
+  --accent-border: color-mix(in srgb, var(--accent) 20%, var(--surface) 80%);
+  --sidebar: #171626;
+  --sidebar-text: #f5f4fb;
+  --sidebar-muted: #a4a2bb;
+  --sidebar-selected: #29283a;
+  --sidebar-selected-border: #47465b;
+  --canvas: #f6f7fa;
+  --surface: #fcfcfd;
+  --surface-muted: #f7f8fb;
+  --border: #e4e7ed;
+  --border-strong: #d5dae3;
+  --text: #252638;
+  --text-muted: #666c7c;
+  --text-soft: #666c7c;
+  --success-tint: #e8f4ec;
+  --success-text: #316746;
+  --success-border: #d4e8db;
+  --review-tint: #fff2df;
+  --review-text: #86551c;
+  --review-border: #f0dfc4;
+  --error-tint: #fdebea;
+  --error-text: #963c39;
+  --error-border: #f2d5d2;
+  --info-tint: #eaf1fb;
+  --info-text: #365d91;
+  --info-border: #d7e3f3;
+  --drawer-backdrop: rgba(23, 22, 38, .24);
+  --transparent: transparent;
+  --sidebar-width: clamp(220px, 20vw, 300px);
+  --radius-control: 6px;
+  --radius-panel: 8px;
+  --radius-pill: 999px;
+}
+
+/* ---------- Theme: Medium (dimmer, soft gray) ---------- */
+:root[data-theme="medium"] {
+  --canvas: #e4e6eb;
+  --surface: #eef0f3;
+  --surface-muted: #e8eaee;
+  --border: #cdd2da;
+  --border-strong: #b9c0cb;
+  --text: #23242f;
+  --text-muted: #535968;
+  --text-soft: #535968;
+}
+
+/* ---------- Theme: Dark (lowest brightness) ---------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --accent: #c5c3e8;
+  --accent-contrast: #171626;
+  --sidebar: #100f1c;
+  --sidebar-selected: #22213a;
+  --sidebar-selected-border: #3a3955;
+  --canvas: #171626;
+  --surface: #22213a;
+  --surface-muted: #1d1c31;
+  --border: #34334d;
+  --border-strong: #46455f;
+  --text: #ecebf5;
+  --text-muted: #aaa8c0;
+  --text-soft: #aaa8c0;
+  --success-tint: #1e3a2a;
+  --success-text: #8fd3a8;
+  --success-border: #2e5a40;
+  --review-tint: #3d2e17;
+  --review-text: #f2c27b;
+  --review-border: #5c4520;
+  --error-tint: #3f1f22;
+  --error-text: #f2a3a0;
+  --error-border: #5e2e31;
+  --info-tint: #1c2a44;
+  --info-text: #9dbdf0;
+  --info-border: #2c4068;
+  --drawer-backdrop: rgba(0, 0, 0, .5);
+}
+
+/* ---------- Text size (text only; layout stays the same) ---------- */
+:root[data-text-size="comfortable"] { --text-scale: 1.06; }
+:root[data-text-size="large"] { --text-scale: 1.12; }
