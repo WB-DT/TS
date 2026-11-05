@@ -87,6 +87,7 @@ const reportUpload = multer({
 app.use(express.json({ limit: "64kb" }));
 app.use(auth.sessionMiddleware);
 auth.registerAuthRoutes(app);
+require("./microsoft-auth").register(app, { database, safeUser: auth.safeUser, landingPath: auth.landingPath });
 app.use(express.static(path.join(__dirname, "public"), { index: false }));
 
 app.get("/login", auth.redirectIfAuthenticated, (_request, response) => {
