@@ -1,0 +1,22 @@
+# Packages (reinstalled with npm install)
+node_modules/
+
+# Secrets: never commit
+.env
+.env.*
+!.env.example
+
+# Local databases
+db/*.sqlite
+db/*.sqlite-shm
+db/*.sqlite-wal
+
+# Uploaded and customer files: never commit
+public/uploads/brand/
+uploads/
+sample-files/
+pricing-uploads/
+templates/
+
+# Logs
+*.log
