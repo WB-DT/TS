@@ -17,6 +17,8 @@ const iconMarkup = {
 };
 
 const pageCopy = {
+   "/margin/locked-prices": ["Locked prices", "Prices locked into customer accounts. Import CSV files and review margins."],
+  "/margin/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
   "/manager/teams-import": ["Import from Teams", "Bring new requests in from the Teams form's quote log."],
 "/qualifier/teams-import": ["Import from Teams", "Bring new requests in from the Teams form's quote log."],
   "/qualifier/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
@@ -856,6 +858,32 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
   const pageContent = document.querySelector("#page-content");
   pageContent.innerHTML = `<section class="intro" aria-labelledby="page-title"><div><p class="eyebrow">${escapeHtml(user.role.toUpperCase())} WORKSPACE</p><h1 id="page-title">${escapeHtml(title)}</h1><p class="intro-copy">${escapeHtml(description)}</p></div><span class="page-index">${escapeHtml(user.role.toUpperCase())}</span></section><div id="page-body"></div><footer class="footer"><span>QUOTEFLOW DOCUMENT WORKSPACE</span><span>${escapeHtml(user.role.toUpperCase())} VIEW</span></footer>`;
   const pageBody = document.querySelector("#page-body");
+  if (page.href === "/margin/locked-prices") {
+    pageBody.innerHTML = `
+      <div id="locked-prices-root">
+        <section class="request-section items-section" aria-labelledby="lp-import-title">
+          <div class="items-heading"><div><h2 class="section-title" id="lp-import-title">Import a CSV file</h2><p class="section-description">Preview first. Rows already saved are skipped, so the same file can be uploaded twice safely.</p></div></div>
+          <div class="lp-import-row">
+            <label class="visually-hidden" for="lp-file">Locked prices CSV file</label>
+            <input id="lp-file" type="file" accept=".csv" />
+            <button class="secondary-button" id="lp-preview" type="button">Preview</button>
+            <button class="settings-save-button" id="lp-import" type="button" hidden>Save prices</button>
+            <p class="request-feedback" id="lp-import-status" role="status" aria-live="polite"></p>
+          </div>
+          <div id="lp-preview-area"></div>
+        </section>
+        <div class="lp-cards" id="lp-totals" role="group" aria-label="Locked-in price totals"></div>
+        <form class="lp-filters" id="lp-filters" role="search">
+          <label>Search<input name="search" type="search" placeholder="Account, company, item, PPL or Q-number" /></label>
+          <label>From<input name="from" type="date" /></label>
+          <label>To<input name="to" type="date" /></label>
+          <label class="lp-check"><input name="belowFloor" type="checkbox" /> Below margin floor only</label>
+          <button class="secondary-button" type="submit">Apply</button>
+        </form>
+        <div id="lp-list"></div>
+      </div>`;
+    return;
+  }
     if (page.href.endsWith("/teams-import")) {
     pageBody.innerHTML = `
       <section class="request-section items-section" aria-labelledby="teams-import-title">

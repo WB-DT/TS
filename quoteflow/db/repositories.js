@@ -1,7 +1,7 @@
 const { createHash, randomUUID } = require("node:crypto");
 const fieldCatalog = require("../fields");
 
-const ROLE_ORDER = ["Manager", "Qualifier", "Quoter", "Reviser", "Rep"];
+const ROLE_ORDER = ["Manager", "Margin Manager", "Qualifier", "Quoter", "Reviser", "Rep"];
 const ALL_ROLES = [...ROLE_ORDER];
 const USER_TEAMS = ["Quotes", "MDM"];
 

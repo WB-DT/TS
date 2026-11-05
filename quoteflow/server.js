@@ -15,6 +15,7 @@ const ExcelJS = require("exceljs");
 const auth = require("./auth");
 const fieldCatalog = require("./fields");
 const pricing = require("./pricing");
+const lockedPrices = require("./locked-prices");
 const teamsImport = require("./teams-import");
 const quoteTemplates = require("./templates");
 const database = require("./db");
@@ -193,6 +194,139 @@ app.post("/api/teams-import/preview", auth.requireRole("Manager", "Qualifier"), 
     requests: toReview.slice(0, 200),
   });
 });
+// ---------- Locked prices (Margin Manager) ----------
+const lockedPriceAccess = auth.requireRole("Margin Manager", "Manager");
+
+// Reads the CSV and marks rows that are already saved. Shared by Preview and Import.
+async function readLockedPriceFile(file) {
+  const result = lockedPrices.parseLockedPrices(file.buffer);
+  const accounts = [...new Set(result.records.map((record) => record.accountNumber).filter(Boolean))];
+  const saved = new Set();
+  for (let start = 0; start < accounts.length; start += 500) {
+    const rows = await database.connection("locked_prices")
+      .whereIn("account_number", accounts.slice(start, start + 500))
+      .select("account_number", "item_number", "uom", "locked_in_date");
+    for (const row of rows) {
+      saved.add(lockedPrices.rowKey({ accountNumber: row.account_number, itemNumber: row.item_number, uom: row.uom, lockedInDate: row.locked_in_date }));
+    }
+  }
+  const records = result.records.map((record) => ({
+    ...record,
+    alreadySaved: record.status === "Ready" && saved.has(lockedPrices.rowKey(record)),
+  }));
+  const ready = records.filter((record) => record.status === "Ready" && !record.alreadySaved);
+  return {
+    columnsMissing: result.columnsMissing,
+    records,
+    ready,
+    summary: {
+      total: records.length,
+      ready: ready.length,
+      alreadySaved: records.filter((record) => record.alreadySaved).length,
+      needsAttention: records.filter((record) => record.status !== "Ready").length,
+    },
+  };
+}
+
+function lockedPriceFileError(error, response) {
+  response.status(400).json({ error: error.status ? error.message : "That file could not be read. Make sure it is a .csv file." });
+}
+
+// Preview: shows what the CSV holds. Saves nothing.
+app.post("/api/locked-prices/preview", lockedPriceAccess, reportUpload.single("file"), async (request, response) => {
+  if (!request.file) {
+    response.status(400).json({ error: "Choose a CSV file." });
+    return;
+  }
+  let result;
+  try {
+    result = await readLockedPriceFile(request.file);
+  } catch (error) {
+    lockedPriceFileError(error, response);
+    return;
+  }
+  response.json({
+    columnsMissing: result.columnsMissing,
+    summary: result.summary,
+    // New and flagged rows only, capped so a big file stays fast.
+    records: result.records.filter((record) => !record.alreadySaved).slice(0, 200),
+  });
+});
+
+// Import: saves every Ready row that isn't saved yet. Flagged rows are skipped.
+app.post("/api/locked-prices/import", lockedPriceAccess, reportUpload.single("file"), async (request, response) => {
+  if (!request.file) {
+    response.status(400).json({ error: "Choose a CSV file." });
+    return;
+  }
+  let result;
+  try {
+    result = await readLockedPriceFile(request.file);
+  } catch (error) {
+    lockedPriceFileError(error, response);
+    return;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const rows = result.ready.map((record) => ({
+    q_number: record.qNumber,
+    account_number: record.accountNumber,
+    company_name: record.companyName,
+    ppl: record.ppl,
+    item_number: record.itemNumber,
+    item_description: record.itemDescription,
+    uom: record.uom,
+    sell_price: record.sellPrice,
+    cost: record.cost,
+    gp_percent: record.gpPercent,
+    locked_in_date: record.lockedInDate,
+    approved_by: record.approvedBy,
+    source: "csv",
+    source_file: String(request.file.originalname || "").slice(0, 255),
+    imported_by_id: request.user.id,
+    imported_at: now,
+  }));
+  await database.connection.transaction(async (trx) => {
+    for (let start = 0; start < rows.length; start += 100) {
+      await trx("locked_prices").insert(rows.slice(start, start + 100));
+    }
+  });
+  response.json({ saved: rows.length, skipped: result.summary.total - rows.length });
+});
+
+// List: the saved prices, newest first, with optional filters.
+app.get("/api/locked-prices", lockedPriceAccess, async (request, response) => {
+  const search = String(request.query.search || "").trim();
+  const from = String(request.query.from || "");
+  const to = String(request.query.to || "");
+  const settings = await database.settings.get();
+  const floor = Number(settings.minimum_margin || 0.1);
+  const query = database.connection("locked_prices");
+  if (search) {
+    const like = `%${search}%`;
+    query.where((builder) => builder
+      .where("account_number", "like", like)
+      .orWhere("company_name", "like", like)
+      .orWhere("item_number", "like", like)
+      .orWhere("ppl", "like", like)
+      .orWhere("q_number", "like", like));
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(from)) query.where("locked_in_date", ">=", from);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(to)) query.where("locked_in_date", "<=", to);
+  if (request.query.belowFloor === "true") query.where("gp_percent", "<", floor);
+  const rows = await query.clone().orderBy("locked_in_date", "desc").orderBy("account_number").limit(500);
+  const [totals] = await query.clone().count({ count: "*" });
+  const [all] = await database.connection("locked_prices")
+    .count({ count: "*" })
+    .countDistinct({ accounts: "account_number" });
+  const [below] = await database.connection("locked_prices").where("gp_percent", "<", floor).count({ count: "*" });
+  response.set("Cache-Control", "no-store");
+  response.json({
+    floor,
+    totals: { prices: Number(all.count), accounts: Number(all.accounts), belowFloor: Number(below.count), matching: Number(totals.count) },
+    rows,
+  });
+});
+
 app.get("/api/request-options", auth.requireRole("Rep"), async (request, response) => {
   const options = await database.users.listRequestOptions(request.user.id);
   response.set("Cache-Control", "no-store");
