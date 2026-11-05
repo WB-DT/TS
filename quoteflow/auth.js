@@ -10,6 +10,7 @@ const demoPasswords = new Map([
   ["quoter2@demo.com", "demo"],
   ["reviser1@demo.com", "demo"],
   ["reviser2@demo.com", "demo"],
+  ["margin1@demo.com", "demo"],
 ]);
 
 // TODO(identity): When Microsoft Entra ID sign-in replaces these demo accounts,
@@ -42,6 +43,10 @@ const navigation = {
     { label: "Coaching", href: "/manager/coaching", icon: "coaching" },
     { label: "Settings", href: "/manager/settings", icon: "settings" },
     { label: "My settings", href: "/manager/my-settings", icon: "settings", hidden: true },
+  ],
+  "Margin Manager": [
+    { label: "Locked prices", href: "/margin/locked-prices", icon: "metrics" },
+    { label: "My settings", href: "/margin/my-settings", icon: "settings", hidden: true },
   ],
   Quoter: [
     { label: "Dashboard", href: "/quoter/home", icon: "dashboard" },

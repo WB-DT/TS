@@ -12,6 +12,7 @@ const users = [
   { id: "quoter-2", email: "quoter2@demo.com", name: "Taylor Ellis", role: "Quoter", team: "MDM", active: true },
   { id: "reviser-1", email: "reviser1@demo.com", name: "Riley Morgan", role: "Reviser", team: "Quotes", active: true },
   { id: "reviser-2", email: "reviser2@demo.com", name: "Casey Morgan", role: "Reviser", team: "MDM", active: true, can_approve: true },
+   { id: "margin-1", email: "margin1@demo.com", name: "Drew Patel", role: "Margin Manager", team: "Quotes", active: true },
 ];
 
 // Users may hold more than one role. Approval is a permission, not a role:
@@ -26,6 +27,7 @@ const userRoles = {
   "quoter-2": ["Quoter"],
   "reviser-1": ["Reviser"],
   "reviser-2": ["Reviser"],
+  "margin-1": ["Margin Manager"],
 };
 
 const accountNames = [
