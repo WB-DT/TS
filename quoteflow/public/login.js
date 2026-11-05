@@ -45,3 +45,25 @@ loginForm.addEventListener("submit", async (event) => {
     loginButton.querySelector("span").textContent = "Sign in";
   }
 });
+
+// Sign in with Microsoft: show the button only when it's set up, and explain any error.
+const microsoftButton = document.querySelector("#microsoft-signin");
+fetch("/api/auth/microsoft/status")
+  .then((response) => (response.ok ? response.json() : { configured: false }))
+  .then(({ configured }) => {
+    microsoftButton.hidden = !configured;
+  })
+  .catch(() => {});
+
+const signInErrors = {
+  "not-in-quoteflow": "Your Microsoft account isn't set up in QuoteFlow yet. Ask a manager to add your work email on the Users page.",
+  "microsoft-cancelled": "Microsoft sign-in was cancelled.",
+  "microsoft-expired": "That sign-in link expired. Please try again.",
+  "microsoft-failed": "Microsoft sign-in didn't work. Please try again.",
+  "microsoft-not-set-up": "Microsoft sign-in isn't set up yet.",
+};
+const signInError = new URLSearchParams(window.location.search).get("error");
+if (signInErrors[signInError]) {
+  loginError.textContent = signInErrors[signInError];
+  loginError.hidden = false;
+}

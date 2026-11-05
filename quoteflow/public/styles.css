@@ -567,3 +567,9 @@ a.user-avatar:focus-visible, .user-name-link:focus-visible { outline: 2px solid 
 .import-summary span { color: var(--text-muted); font-size: calc(11px * var(--text-scale)); }
 .import-problem { display: block; margin-top: 4px; color: var(--review-text); font-size: calc(10px * var(--text-scale)); }
 @media (max-width: 760px) { .import-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Sign in with Microsoft */
+.microsoft-signin { min-height: 42px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; padding: 0 13px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface); color: var(--text); font-size: calc(12px * var(--text-scale)); font-weight: 600; text-decoration: none; }
+.microsoft-signin:hover { border-color: var(--accent-border); background: var(--accent-tint); }
+.microsoft-signin:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.microsoft-signin[hidden] { display: none; }

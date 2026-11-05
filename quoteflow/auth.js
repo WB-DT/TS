@@ -241,6 +241,7 @@ module.exports = {
   sessionMiddleware,
   registerAuthRoutes,
   registerDemoPassword,
+    safeUser,
   requireAuth,
   requireRole,
   requirePageAccess,
