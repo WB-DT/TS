@@ -17,6 +17,8 @@ const iconMarkup = {
 };
 
 const pageCopy = {
+   "/manager/request-log": ["Request log", "The team's Quote Log and MDM Log, imported from Dataverse."],
+  "/qualifier/request-log": ["Request log", "The team's Quote Log and MDM Log, imported from Dataverse."],
    "/margin/locked-prices": ["Locked prices", "Prices locked into customer accounts. Import CSV files and review margins."],
   "/margin/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
   "/manager/teams-import": ["Import from Teams", "Bring new requests in from the Teams form's quote log."],
@@ -858,6 +860,34 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
   const pageContent = document.querySelector("#page-content");
   pageContent.innerHTML = `<section class="intro" aria-labelledby="page-title"><div><p class="eyebrow">${escapeHtml(user.role.toUpperCase())} WORKSPACE</p><h1 id="page-title">${escapeHtml(title)}</h1><p class="intro-copy">${escapeHtml(description)}</p></div><span class="page-index">${escapeHtml(user.role.toUpperCase())}</span></section><div id="page-body"></div><footer class="footer"><span>QUOTEFLOW DOCUMENT WORKSPACE</span><span>${escapeHtml(user.role.toUpperCase())} VIEW</span></footer>`;
   const pageBody = document.querySelector("#page-body");
+   if (page.href.endsWith("/request-log")) {
+    pageBody.innerHTML = `
+      <div id="request-log-root">
+        <section class="request-section items-section" aria-labelledby="rl-import-title">
+          <div class="items-heading"><div><h2 class="section-title" id="rl-import-title">Import the Dataverse export</h2><p class="section-description">Upload the .xlsx export of the Quote Log, the MDM Log, or both. New rows are added and changed rows are updated. Nothing is ever deleted.</p></div></div>
+          <div class="rl-import-row">
+            <label class="visually-hidden" for="rl-file">Dataverse export (.xlsx)</label>
+            <input id="rl-file" type="file" accept=".xlsx" />
+            <button class="settings-save-button" id="rl-import" type="button">Import</button>
+            <p class="request-feedback" id="rl-import-status" role="status" aria-live="polite"></p>
+          </div>
+        </section>
+        <div class="rl-tabs" role="tablist" aria-label="Log">
+          <button type="button" role="tab" aria-selected="true" data-log-tab="quote">Quote Log</button>
+          <button type="button" role="tab" aria-selected="false" data-log-tab="mdm">MDM Log</button>
+        </div>
+        <div class="rl-cards" id="rl-cards" role="group" aria-label="Rows by stage"></div>
+        <form class="rl-search" id="rl-search" role="search">
+          <label class="visually-hidden" for="rl-search-box">Search the log</label>
+          <input id="rl-search-box" name="search" type="search" placeholder="Search Q-number, company, account, person or PPL" />
+          <button class="secondary-button" type="submit">Search</button>
+        </form>
+        <div id="rl-list"></div>
+        <section class="rl-detail" id="rl-detail" aria-live="polite" hidden></section>
+      </div>`;
+    return;
+  }
+
   if (page.href === "/margin/locked-prices") {
     pageBody.innerHTML = `
       <div id="locked-prices-root">

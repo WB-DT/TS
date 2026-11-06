@@ -114,14 +114,59 @@ function rowKey(record) {
   return [record.accountNumber, record.itemNumber, record.uom, record.lockedInDate].join("|");
 }
 
+// Load forms have no header row. Each column's position (counting from 0) is fixed.
+// If the load form layout ever changes, update the numbers here.
+const LOAD_FORM_POSITIONS = {
+  ppl: 0,          // PPL1234567
+  contractName: 1, // the contract name (not always the account)
+  startDate: 3,    // 5/3/2024, used as the locked-in date
+  itemNumber: 7,   // DIE60051052
+  uom: 8,          // CT
+  sellPrice: 10,   // 48.72
+};
+
+// Reads the account number, company name and Quote or MDM from the file name,
+// for example "Load Form - C1234566 - Fake Company Name 1.csv".
+function detailsFromFileName(fileName) {
+  const stem = String(fileName || "")
+    .replace(/\.[^.]+$/, "")                        // drop .csv
+    .replace(/[^\p{L}\p{N}\s\-&.,'()#]/gu, " ");    // drop emoji and symbols
+  const parts = stem.split(/\s+-\s+|\s*_\s*/).map((part) => part.trim()).filter(Boolean);
+  const skip = /^(load\s*form|loadform|quote|mdm|Q-?\d+|final|revised|copy|\(\d+\))$/i;
+  const accountIndex = parts.findIndex((part) => /^C\d+$/i.test(part));
+  const name = parts.slice(accountIndex + 1).filter((part) => !skip.test(part)).join(" - ");
+  return {
+    accountNumber: accountIndex === -1 ? "" : parts[accountIndex].toUpperCase(),
+    companyName: accountIndex === -1 ? "" : name,
+    requestType: /\bMDM\b/i.test(stem) ? "MDM" : "Quote",
+    qNumber: (stem.match(/\bQ-?(\d{4,7})\b/i) || [])[1] ? "Q-" + stem.match(/\bQ-?(\d{4,7})\b/i)[1] : "",
+  };
+}
+
+// Recognizes a load form (first cell is a PPL number, no header row) and adds the
+// header row QuoteFlow expects, so the rest of the reader works unchanged.
+function fromLoadForm(rows, fileName) {
+  const first = rows[0] || [];
+  if (!/^PPL\d+$/i.test(String(first[0] || "").trim())) return rows;
+  const p = LOAD_FORM_POSITIONS;
+  const details = detailsFromFileName(fileName);
+  const header = ["Q-Number", "PPL", "Account Number", "Company Name", "Contract Name", "Request Type",
+    "Item Number", "UOM", "Sell Price", "Locked-in Date"];
+  const data = rows
+    .filter((cells) => cells.some((cell) => String(cell).trim() !== ""))
+    .map((cells) => [details.qNumber, cells[p.ppl], details.accountNumber, details.companyName, cells[p.contractName],
+      details.requestType, cells[p.itemNumber], cells[p.uom], cells[p.sellPrice], cells[p.startDate]]);
+  return [header, ...data];
+}
+
 // Main entry point: give it the CSV file's contents, get back the records it found.
-function parseLockedPrices(buffer) {
+function parseLockedPrices(buffer, fileName) {
   if (buffer.length > 1 && buffer[0] === 0x50 && buffer[1] === 0x4b) {
     const error = new Error("This looks like an Excel file. In Excel, use File > Save As > CSV, then upload the .csv file.");
     error.status = 400;
     throw error;
   }
-  const rows = parseCsv(buffer.toString("utf8").replace(/^﻿/, ""));
+  const rows = fromLoadForm(parseCsv(buffer.toString("utf8").replace(/^﻿/, "")), fileName);
   if (rows.length < 2) {
     const error = new Error("The file has no price rows under the header row.");
     error.status = 400;
@@ -192,7 +237,7 @@ if (require.main === module) {
     console.log("Usage: node locked-prices.js path/to/file.csv");
     process.exit(1);
   }
-  const result = parseLockedPrices(require("node:fs").readFileSync(filePath));
+  const result = parseLockedPrices(require("node:fs").readFileSync(filePath), require("node:path").basename(filePath));
   console.log(`Missing columns: ${result.columnsMissing.length ? result.columnsMissing.join(", ") : "none"}`);
   console.log(`Rows found: ${result.records.length}`);
   console.table(result.records.map((record) => ({
