@@ -27,6 +27,7 @@ const navigation = {
     { label: "Dashboard", href: "/qualifier/home", icon: "dashboard" },
     { label: "New request (intake)", href: "/qualifier/new-request", icon: "quotes" },
     { label: "Screening queue", href: "/qualifier/screening-queue", icon: "screening" },
+    { label: "Request log", href: "/qualifier/request-log", icon: "list" },
     { label: "Import from Teams", href: "/qualifier/teams-import", icon: "upload" },
     { label: "Quote log", href: "/qualifier/quote-log", icon: "list" },
     { label: "My settings", href: "/qualifier/my-settings", icon: "settings", hidden: true },
@@ -35,6 +36,8 @@ const navigation = {
     { label: "Dashboard", href: "/manager/home", icon: "dashboard" },
     { label: "New request (intake)", href: "/manager/new-request", icon: "quotes" },
     { label: "Quote log", href: "/manager/quote-log", icon: "list" },
+    { label: "Request log", href: "/manager/request-log", icon: "list" },
+
     { label: "Import from Teams", href: "/manager/teams-import", icon: "upload" },
     { label: "Assignments", href: "/manager/assignments", icon: "assign" },
     { label: "Approval queue", href: "/manager/approval-queue", icon: "review" },
