@@ -20,3 +20,4 @@ templates/
 
 # Logs
 *.log
+ocr-cache/

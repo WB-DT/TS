@@ -15,6 +15,7 @@ const ExcelJS = require("exceljs");
 const auth = require("./auth");
 const fieldCatalog = require("./fields");
 const pricing = require("./pricing");
+const ocr = require("./ocr");
 const dataverseLogs = require("./dataverse-logs");
 const lockedPrices = require("./locked-prices");
 const teamsImport = require("./teams-import");
@@ -461,6 +462,30 @@ app.get("/api/request-log/:log/:id", requestLogAccess, async (request, response)
     return;
   }
   response.json({ log: log.label, row });
+});
+
+
+// ---------- Read a document (OCR proof) ----------
+// Reads an uploaded PDF or photo in memory and returns the item lines it finds. Nothing is saved.
+const ocrAccess = auth.requireRole("Manager", "Quoter");
+const ocrUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024, files: 1 } });
+
+app.post("/api/ocr/read", ocrAccess, ocrUpload.single("file"), async (request, response) => {
+  if (!request.file) {
+    response.status(400).json({ error: "Choose a PDF or photo." });
+    return;
+  }
+  try {
+    const result = await ocr.readDocument({ buffer: request.file.buffer, fileName: request.file.originalname });
+    response.set("Cache-Control", "no-store");
+    response.json(result);
+  } catch (error) {
+    const status = Number(error.status) || 500;
+    if (status >= 500) console.error("OCR failed:", error.message);
+    response.status(status).json({
+      error: status >= 500 ? "The document couldn't be read. Try a clearer photo or a different file." : error.message,
+    });
+  }
 });
 
 

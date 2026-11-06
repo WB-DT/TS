@@ -616,3 +616,19 @@ a.user-avatar:focus-visible, .user-name-link:focus-visible { outline: 2px solid 
 .rl-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px 20px; margin: 0; }
 .rl-fields dt { color: var(--text-muted); font-size: calc(10px * var(--text-scale)); font-weight: 600; letter-spacing: .3px; }
 .rl-fields dd { margin: 2px 0 0; overflow-wrap: anywhere; color: var(--text); font-size: calc(12px * var(--text-scale)); white-space: pre-wrap; }
+
+/* Read a document (OCR proof) */
+.ocr-upload-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 18px; }
+.ocr-upload-row input[type="file"] { color: var(--text); font: inherit; font-size: calc(11px * var(--text-scale)); }
+.ocr-upload-row .request-feedback { flex-basis: 100%; }
+.ocr-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 18px 0 12px; }
+.ocr-card { padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface); }
+.ocr-card strong { display: block; color: var(--text); font-size: calc(18px * var(--text-scale)); font-weight: 600; }
+.ocr-card span { color: var(--text-muted); font-size: calc(11px * var(--text-scale)); }
+.ocr-code { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; white-space: nowrap; }
+.ocr-note { margin-top: 4px; color: var(--review-text); font-size: calc(10px * var(--text-scale)); }
+.ocr-raw { margin: 16px 0 0; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface); }
+.ocr-raw summary { color: var(--text); cursor: pointer; font-size: calc(12px * var(--text-scale)); font-weight: 600; }
+.ocr-raw pre { max-height: 360px; margin: 12px 0 0; overflow: auto; color: var(--text-muted); font-size: calc(11px * var(--text-scale)); white-space: pre-wrap; }
+.ocr-table th:first-child, .ocr-table td:first-child { width: 36px; }
+.ocr-table td:nth-child(3) { min-width: 220px; }
