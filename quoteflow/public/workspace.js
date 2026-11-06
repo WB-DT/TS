@@ -17,6 +17,8 @@ const iconMarkup = {
 };
 
 const pageCopy = {
+  "/manager/read-document": ["Read a document", "Proof that QuoteFlow can read the item lines in a PDF or photo."],
+  "/quoter/read-document": ["Read a document", "Proof that QuoteFlow can read the item lines in a PDF or photo."],
    "/manager/request-log": ["Request log", "The team's Quote Log and MDM Log, imported from Dataverse."],
   "/qualifier/request-log": ["Request log", "The team's Quote Log and MDM Log, imported from Dataverse."],
    "/margin/locked-prices": ["Locked prices", "Prices locked into customer accounts. Import CSV files and review margins."],
@@ -860,6 +862,23 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
   const pageContent = document.querySelector("#page-content");
   pageContent.innerHTML = `<section class="intro" aria-labelledby="page-title"><div><p class="eyebrow">${escapeHtml(user.role.toUpperCase())} WORKSPACE</p><h1 id="page-title">${escapeHtml(title)}</h1><p class="intro-copy">${escapeHtml(description)}</p></div><span class="page-index">${escapeHtml(user.role.toUpperCase())}</span></section><div id="page-body"></div><footer class="footer"><span>QUOTEFLOW DOCUMENT WORKSPACE</span><span>${escapeHtml(user.role.toUpperCase())} VIEW</span></footer>`;
   const pageBody = document.querySelector("#page-body");
+   if (page.href.endsWith("/read-document")) {
+    pageBody.innerHTML = `
+      <div id="ocr-root">
+        <section class="request-section items-section" aria-labelledby="ocr-title">
+          <div class="items-heading"><div><h2 class="section-title" id="ocr-title">Read a PDF or photo</h2><p class="section-description">Upload an invoice, quote or price list. QuoteFlow finds the item lines: item number, description, quantity, unit and price. The file is read inside QuoteFlow and is not saved.</p></div></div>
+          <div class="ocr-upload-row">
+            <label class="visually-hidden" for="ocr-file">Document (PDF, PNG, JPG, TIFF, BMP or WebP)</label>
+            <input id="ocr-file" type="file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp" />
+            <button class="settings-save-button" id="ocr-read" type="button">Read document</button>
+            <p class="request-feedback" id="ocr-status" role="status" aria-live="polite"></p>
+          </div>
+        </section>
+        <div id="ocr-results" aria-live="polite"></div>
+      </div>`;
+    return;
+  }
+
    if (page.href.endsWith("/request-log")) {
     pageBody.innerHTML = `
       <div id="request-log-root">

@@ -32,6 +32,8 @@
     "knex": "^3.3.0",
     "multer": "^2.5.0",
     "tedious": "^20.3.8",
+    "tesseract.js": "^5.1.1",
+    "unpdf": "^2.1.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
 }

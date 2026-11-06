@@ -37,6 +37,7 @@ const navigation = {
     { label: "New request (intake)", href: "/manager/new-request", icon: "quotes" },
     { label: "Quote log", href: "/manager/quote-log", icon: "list" },
     { label: "Request log", href: "/manager/request-log", icon: "list" },
+    { label: "Read a document", href: "/manager/read-document", icon: "upload" },
 
     { label: "Import from Teams", href: "/manager/teams-import", icon: "upload" },
     { label: "Assignments", href: "/manager/assignments", icon: "assign" },
@@ -54,6 +55,8 @@ const navigation = {
   Quoter: [
     { label: "Dashboard", href: "/quoter/home", icon: "dashboard" },
     { label: "My quotes", href: "/quoter/my-quotes", icon: "quotes" },
+    { label: "Read a document", href: "/quoter/read-document", icon: "upload" },
+
     { label: "Quote workspace", href: "/quoter/quote-workspace", icon: "workspace" },
     { label: "My settings", href: "/quoter/my-settings", icon: "settings", hidden: true },
   ],
