@@ -37,6 +37,7 @@ const navigation = {
     { label: "New request (intake)", href: "/manager/new-request", icon: "quotes" },
     { label: "Quote log", href: "/manager/quote-log", icon: "list" },
     { label: "Request log", href: "/manager/request-log", icon: "list" },
+    { label: "Cross-reference", href: "/manager/cross-reference", icon: "templates" },
     { label: "Read a document", href: "/manager/read-document", icon: "upload" },
 
     { label: "Import from Teams", href: "/manager/teams-import", icon: "upload" },
@@ -50,6 +51,7 @@ const navigation = {
   ],
   "Margin Manager": [
     { label: "Locked prices", href: "/margin/locked-prices", icon: "metrics" },
+    { label: "Cross-reference", href: "/margin/cross-reference", icon: "templates" },
     { label: "My settings", href: "/margin/my-settings", icon: "settings", hidden: true },
   ],
   Quoter: [
