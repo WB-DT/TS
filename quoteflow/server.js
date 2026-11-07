@@ -88,7 +88,7 @@ const reportUpload = multer({
   },
 });
 
-app.use(express.json({ limit: "64kb" }));
+app.use(express.json({ limit: "2mb" }));
 app.use(auth.sessionMiddleware);
 auth.registerAuthRoutes(app);
 require("./microsoft-auth").register(app, { database, safeUser: auth.safeUser, landingPath: auth.landingPath });
@@ -639,6 +639,8 @@ app.get("/api/xref/runs/:id/export", xrefAccess, async (request, response) => {
 });
 
 
+require("./quote-stages").register(app, { auth, database, multer, requestUpload, writeQuoteFile, uploadsRoot: __dirname });
+
 
 app.get("/api/request-options", auth.requireRole("Rep"), async (request, response) => {
   const options = await database.users.listRequestOptions(request.user.id);
@@ -881,6 +883,7 @@ async function writeQuoteFile(uploaded, fileId) {
 }
 
 async function removeStoredFile(storageKey) {
+  return; // Files are kept forever, so they can always be opened and checked.
   if (!storageKey) return;
   const absolutePath = path.join(__dirname, storageKey);
   if (!absolutePath.startsWith(path.join(__dirname, "uploads"))) return;
