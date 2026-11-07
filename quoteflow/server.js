@@ -15,6 +15,7 @@ const ExcelJS = require("exceljs");
 const auth = require("./auth");
 const fieldCatalog = require("./fields");
 const pricing = require("./pricing");
+const xref = require("./xref");
 const ocr = require("./ocr");
 const dataverseLogs = require("./dataverse-logs");
 const lockedPrices = require("./locked-prices");
@@ -487,6 +488,156 @@ app.post("/api/ocr/read", ocrAccess, ocrUpload.single("file"), async (request, r
     });
   }
 });
+
+// ---------- Cross-reference (Margin Manager) ----------
+// The same calculations as the Cross Reference Tool workbook, run on files uploaded one at a time.
+const xrefAccess = auth.requireRole("Margin Manager", "Manager");
+const xrefUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 40 * 1024 * 1024, files: 1 } });
+const XREF_KINDS = ["items", "account", "house", "costing"];
+
+async function loadXrefRun(id) {
+  const run = await database.connection("xref_runs").where({ id }).first();
+  if (!run) return null;
+  const fileRows = await database.connection("xref_files").where({ run_id: id });
+  const files = {};
+  const fileInfo = {};
+  for (const row of fileRows) {
+    files[row.kind] = { headers: JSON.parse(row.headers_json || "[]"), rows: JSON.parse(row.rows_json || "[]") };
+    fileInfo[row.kind] = { fileName: row.file_name, sheet: row.sheet_name, rows: row.row_count, uploadedAt: row.uploaded_at };
+  }
+  return { run, files, fileInfo, targets: JSON.parse(run.targets_json || "{}") };
+}
+
+function xrefResult(loaded) {
+  const { run, files, fileInfo, targets } = loaded;
+  const costColumn = run.cost_column === null ? xref.DEFAULT_COSTING_COST_COLUMN : run.cost_column;
+  const result = xref.crossReference(files, { costColumn, targets });
+  return {
+    run: { id: run.id, name: run.name, createdBy: run.created_by_name, createdAt: run.created_at, updatedAt: run.updated_at },
+    files: fileInfo,
+    costColumn,
+    costingHeaders: files.costing ? files.costing.headers : [],
+    ...result,
+  };
+}
+
+app.get("/api/xref/runs", xrefAccess, async (_request, response) => {
+  const runs = await database.connection("xref_runs").orderBy("updated_at", "desc").limit(50)
+    .select("id", "name", "created_by_name", "created_at", "updated_at");
+  const files = await database.connection("xref_files").whereIn("run_id", runs.map((run) => run.id)).select("run_id", "kind");
+  response.set("Cache-Control", "no-store");
+  response.json({ runs: runs.map((run) => ({ ...run, kinds: files.filter((file) => file.run_id === run.id).map((file) => file.kind) })) });
+});
+
+app.post("/api/xref/runs", xrefAccess, async (request, response) => {
+  const name = String(request.body?.name || "").trim().slice(0, 160);
+  if (!name) {
+    response.status(400).json({ error: "Give the run a name, such as the account number or Q-number." });
+    return;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const id = randomBytes(16).toString("hex");
+  await database.connection("xref_runs").insert({
+    id, name, cost_column: null, targets_json: "{}", created_by_id: request.user.id, created_by_name: request.user.name, created_at: now, updated_at: now,
+  });
+  response.status(201).json({ id });
+});
+
+app.get("/api/xref/runs/:id", xrefAccess, async (request, response) => {
+  const loaded = await loadXrefRun(request.params.id);
+  if (!loaded) {
+    response.status(404).json({ error: "Run not found." });
+    return;
+  }
+  response.set("Cache-Control", "no-store");
+  response.json(xrefResult(loaded));
+});
+
+// Upload one file. Replacing the items list clears the target margins, since the lines changed.
+app.post("/api/xref/runs/:id/files/:kind", xrefAccess, xrefUpload.single("file"), async (request, response) => {
+  const { id, kind } = request.params;
+  if (!XREF_KINDS.includes(kind)) {
+    response.status(404).json({ error: "Unknown file type." });
+    return;
+  }
+  if (!(await database.connection("xref_runs").where({ id }).first())) {
+    response.status(404).json({ error: "Run not found." });
+    return;
+  }
+  if (!request.file) {
+    response.status(400).json({ error: "Choose an .xlsx or .csv file." });
+    return;
+  }
+  let parsed;
+  try {
+    parsed = xref.readUpload(request.file.buffer, kind);
+  } catch (error) {
+    response.status(error.status || 400).json({ error: error.status ? error.message : "That file couldn't be read." });
+    return;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  await database.connection.transaction(async (trx) => {
+    await trx("xref_files").where({ run_id: id, kind }).delete();
+    await trx("xref_files").insert({
+      run_id: id, kind, file_name: request.file.originalname.slice(0, 255), sheet_name: String(parsed.sheet).slice(0, 120),
+      row_count: parsed.rows.length, headers_json: JSON.stringify(parsed.headers), rows_json: JSON.stringify(parsed.rows),
+      uploaded_by_id: request.user.id, uploaded_at: now,
+    });
+    const changes = { updated_at: now };
+    if (kind === "items") changes.targets_json = "{}";
+    await trx("xref_runs").where({ id }).update(changes);
+  });
+  const loaded = await loadXrefRun(id);
+  response.json(xrefResult(loaded));
+});
+
+// Save the costing cost column and the target margins.
+app.put("/api/xref/runs/:id", xrefAccess, async (request, response) => {
+  const loaded = await loadXrefRun(request.params.id);
+  if (!loaded) {
+    response.status(404).json({ error: "Run not found." });
+    return;
+  }
+  const changes = { updated_at: Math.floor(Date.now() / 1000) };
+  if (typeof request.body?.costColumn === "string") changes.cost_column = request.body.costColumn.slice(0, 80);
+  if (request.body?.targets && typeof request.body.targets === "object") {
+    const targets = {};
+    for (const [line, value] of Object.entries(request.body.targets)) {
+      const number = Number(value);
+      if (/^\d+$/.test(line) && Number.isFinite(number) && number > 0 && number < 1) targets[line] = number;
+    }
+    changes.targets_json = JSON.stringify(targets);
+  }
+  await database.connection("xref_runs").where({ id: request.params.id }).update(changes);
+  response.json(xrefResult(await loadXrefRun(request.params.id)));
+});
+
+// Export the results in the same column order as the workbook's Usage or Consumption tab.
+app.get("/api/xref/runs/:id/export", xrefAccess, async (request, response) => {
+  const loaded = await loadXrefRun(request.params.id);
+  if (!loaded) {
+    response.status(404).json({ error: "Run not found." });
+    return;
+  }
+  const result = xrefResult(loaded);
+  const XLSX = require("xlsx");
+  const rows = result.lines.map((l) => ({
+    Order: l.line, Items: l.item, UMs: l.uom, Description: l.description, Category: l.category, Qty: l.qty,
+    Price: l.price, "Extended Price": l.extendedPrice, "Financial Cost": l.financialCost, "Cost From": l.costSource,
+    "Extended Cost": l.extendedCost, "Current Margin": l.currentMargin, "Target Margin": l.targetMargin,
+    "Price at Target Margin": l.priceAtTarget, "Pricing Method": l.pricingMethod, Status: l.status,
+    "Sub F/Inactive": l.substitute, Sustainable: l.sustainable, "Has Content": l.hasContent,
+    "Catalog Price": l.catalogPrice, "Review Needed": l.reviewNeeded,
+  }));
+  const book = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(rows), "Cross reference");
+  const buffer = XLSX.write(book, { type: "buffer", bookType: "xlsx" });
+  const safeName = result.run.name.replace(/[^A-Za-z0-9 _-]/g, "").trim() || "cross-reference";
+  response.set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  response.set("Content-Disposition", `attachment; filename="${safeName} - cross reference.xlsx"`);
+  response.send(buffer);
+});
+
 
 
 app.get("/api/request-options", auth.requireRole("Rep"), async (request, response) => {

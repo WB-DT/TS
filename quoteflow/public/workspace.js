@@ -17,6 +17,8 @@ const iconMarkup = {
 };
 
 const pageCopy = {
+   "/margin/cross-reference": ["Cross-reference", "Upload the files one at a time; every line is calculated like the Cross Reference Tool."],
+  "/manager/cross-reference": ["Cross-reference", "Upload the files one at a time; every line is calculated like the Cross Reference Tool."],
   "/manager/read-document": ["Read a document", "Proof that QuoteFlow can read the item lines in a PDF or photo."],
   "/quoter/read-document": ["Read a document", "Proof that QuoteFlow can read the item lines in a PDF or photo."],
    "/manager/request-log": ["Request log", "The team's Quote Log and MDM Log, imported from Dataverse."],
@@ -862,7 +864,25 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
   const pageContent = document.querySelector("#page-content");
   pageContent.innerHTML = `<section class="intro" aria-labelledby="page-title"><div><p class="eyebrow">${escapeHtml(user.role.toUpperCase())} WORKSPACE</p><h1 id="page-title">${escapeHtml(title)}</h1><p class="intro-copy">${escapeHtml(description)}</p></div><span class="page-index">${escapeHtml(user.role.toUpperCase())}</span></section><div id="page-body"></div><footer class="footer"><span>QUOTEFLOW DOCUMENT WORKSPACE</span><span>${escapeHtml(user.role.toUpperCase())} VIEW</span></footer>`;
   const pageBody = document.querySelector("#page-body");
-   if (page.href.endsWith("/read-document")) {
+ if (page.href.endsWith("/cross-reference")) {
+    pageBody.innerHTML = `
+      <div id="xref-root">
+        <section class="request-section items-section" aria-labelledby="xref-runs-title">
+          <div class="items-heading"><div><h2 class="section-title" id="xref-runs-title">Runs</h2><p class="section-description">Each run prices one list of items, such as an account or a quote. Its files are kept with it.</p></div></div>
+          <form class="xr-new" id="xref-new">
+            <label class="visually-hidden" for="xref-new-name">Run name</label>
+            <input id="xref-new-name" name="name" maxlength="160" placeholder="Name, for example C1234566 or Q-34721" />
+            <button class="settings-save-button" type="submit">Start a run</button>
+            <p class="request-feedback" id="xref-new-status" role="status" aria-live="polite"></p>
+          </form>
+          <div id="xref-runs"></div>
+        </section>
+        <section class="xr-detail" id="xref-detail" aria-live="polite" hidden></section>
+      </div>`;
+    return;
+  }
+
+  if (page.href.endsWith("/read-document")) {
     pageBody.innerHTML = `
       <div id="ocr-root">
         <section class="request-section items-section" aria-labelledby="ocr-title">
