@@ -864,6 +864,16 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
   const pageContent = document.querySelector("#page-content");
   pageContent.innerHTML = `<section class="intro" aria-labelledby="page-title"><div><p class="eyebrow">${escapeHtml(user.role.toUpperCase())} WORKSPACE</p><h1 id="page-title">${escapeHtml(title)}</h1><p class="intro-copy">${escapeHtml(description)}</p></div><span class="page-index">${escapeHtml(user.role.toUpperCase())}</span></section><div id="page-body"></div><footer class="footer"><span>QUOTEFLOW DOCUMENT WORKSPACE</span><span>${escapeHtml(user.role.toUpperCase())} VIEW</span></footer>`;
   const pageBody = document.querySelector("#page-body");
+  if (page.href === "/quoter/quote-workspace") {
+    window.__workspaceQuotes = quotes;
+    pageBody.innerHTML = `
+      <div id="qs-root">
+        <div class="qs-pick"><label for="qs-picker">Quote</label><select id="qs-picker"></select></div>
+        <div id="qs-view"></div>
+      </div>`;
+    return;
+  }
+
  if (page.href.endsWith("/cross-reference")) {
     pageBody.innerHTML = `
       <div id="xref-root">
