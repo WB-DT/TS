@@ -1,0 +1,15 @@
+FILE: public/workspace.js
+
+--- 3. Search for this line, click at its END, press Enter, paste the whole block below.
+SEARCH:
+const pageBody = document.querySelector("#page-body");
+PASTE ON THE NEW LINES (everything from "if" to the last "}"):
+  if (page.href === "/quoter/quote-workspace") {
+    window.__workspaceQuotes = quotes;
+    pageBody.innerHTML = `
+      <div id="qs-root">
+        <div class="qs-pick"><label for="qs-picker">Quote</label><select id="qs-picker"></select></div>
+        <div id="qs-view"></div>
+      </div>`;
+    return;
+  }

@@ -1,0 +1,7 @@
+FILE: views/login.html
+
+Search for this text, click at the END of that line, press Enter, paste the line below it.
+SEARCH:
+data-demo-email="reviser2@demo.com"
+PASTE ON THE NEW LINE:
+            <li><button type="button" data-demo-email="margin1@demo.com"><span>margin1@demo.com</span><small>Margin Manager</small></button></li>

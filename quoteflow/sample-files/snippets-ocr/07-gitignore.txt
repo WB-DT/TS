@@ -1,0 +1,9 @@
+FILE: .gitignore  (the one inside the quoteflow folder)
+
+--- 7. Press Ctrl + End, press Enter, paste the line below.
+PASTE AT THE END:
+ocr-cache/
+
+Why: the first time QuoteFlow reads a photo, Tesseract downloads its English
+language file (about 10 MB) into quoteflow/ocr-cache/ and reuses it after that.
+It's a download, not code, so it stays out of git.

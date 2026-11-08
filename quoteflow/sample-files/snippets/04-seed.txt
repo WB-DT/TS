@@ -1,0 +1,13 @@
+FILE: db/seed.js
+
+--- 4a. Search (Ctrl + F) for this line, click at its END, press Enter, paste the line below it.
+SEARCH:
+id: "reviser-2"
+PASTE ON THE NEW LINE:
+  { id: "margin-1", email: "margin1@demo.com", name: "Drew Patel", role: "Margin Manager", team: "Quotes", active: true },
+
+--- 4b. Search for this line, click at its END, press Enter, paste the line below it.
+SEARCH:
+"reviser-2": ["Reviser"],
+PASTE ON THE NEW LINE:
+  "margin-1": ["Margin Manager"],

@@ -1,0 +1,7 @@
+FILE: db/repositories.js     (use Ctrl + H, then Replace, 1 of 1)
+
+SEARCH:
+const ROLE_ORDER = ["Manager", "Qualifier", "Quoter", "Reviser", "Rep"];
+
+REPLACE:
+const ROLE_ORDER = ["Manager", "Margin Manager", "Qualifier", "Quoter", "Reviser", "Rep"];

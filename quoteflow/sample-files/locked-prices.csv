@@ -1,0 +1,4 @@
+Q-Number,Account Number,Company Name,PPL,Item Number,Item Description,UOM,Locked-in Sell Price,Cost,GP %,Locked-in Date,Approved By
+Q-34713,C1234566,Fake Company Name 1,PPL2709143,PAP1011,"Copy paper, 8.5 x 11, 10 reams",CT,42.50,31.20,26.6%,11/2/2026,Morgan Lee
+Q-34713,C1234566,Fake Company Name 1,PPL2709143,PEN2201,"Ballpoint pens, black, 12 count",DZ,4.10,3.60,,11/2/2026,Morgan Lee
+Q-34715,C1234567,Fake Company Name 2,PPL2709150,JAN3300,"Paper towels, multifold, 16 packs",CT,38.75,29.00,25.2%,2026-10-30,Morgan Lee

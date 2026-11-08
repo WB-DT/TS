@@ -1,0 +1,13 @@
+FILE: auth.js
+
+--- 3a. Search for this text, click at the END of that line, press Enter, paste the line below it.
+SEARCH:
+href: "/manager/quote-log"
+PASTE ON THE NEW LINE:
+    { label: "Request log", href: "/manager/request-log", icon: "list" },
+
+--- 3b. Search for this text, click at the END of that line, press Enter, paste the line below it.
+SEARCH:
+href: "/qualifier/screening-queue"
+PASTE ON THE NEW LINE:
+    { label: "Request log", href: "/qualifier/request-log", icon: "list" },

@@ -1,0 +1,16 @@
+FILE: auth.js
+
+--- 5a. Search for this line, click at its END, press Enter, paste the line below it.
+SEARCH:
+["reviser2@demo.com", "demo"],
+PASTE ON THE NEW LINE:
+  ["margin1@demo.com", "demo"],
+
+--- 5b. Search for this line, click at its START, press Home, paste the block below.
+SEARCH:
+  Quoter: [
+PASTE (so it sits just ABOVE "Quoter: ["):
+  "Margin Manager": [
+    { label: "Locked prices", href: "/margin/locked-prices", icon: "metrics" },
+    { label: "My settings", href: "/margin/my-settings", icon: "settings", hidden: true },
+  ],

@@ -1,0 +1,148 @@
+FILE: server.js
+
+--- 5a. Search for this line, click at its END, press Enter, paste the line below it.
+SEARCH:
+const pricing = require("./pricing");
+PASTE ON THE NEW LINE:
+const dataverseLogs = require("./dataverse-logs");
+
+--- 5b. Search for this text, click on that line, press Home, paste the whole block below
+---     (so the block sits just ABOVE app.get("/api/request-options").
+SEARCH:
+app.get("/api/request-options"
+PASTE:
+// ---------- Request log (copies of the Dataverse Quote Log and MDM Log) ----------
+const requestLogAccess = auth.requireRole("Manager", "Qualifier");
+const logUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 80 * 1024 * 1024, files: 1 } });
+
+// Which rows count as each stage, written as database conditions (matches stageOf in dataverse-logs.js).
+function applyStage(query, logKey, stage) {
+  const returned = logKey === "quote" ? "cr714_datereturnedorkilled" : "cr714_datesentbacktorepmdm";
+  const assigned = (builder) => {
+    builder.whereNotNull("cr714_assignedto").orWhereNotNull("cr714_dateassigned");
+    if (logKey === "mdm") builder.orWhereNotNull("cr714_quoter");
+  };
+  if (stage === "Returned or killed" || stage === "Sent back") query.whereNotNull(returned);
+  if (stage === "Assigned") query.whereNull(returned).where(assigned);
+  if (stage === "Qualified") query.whereNull(returned).whereNot(assigned).whereNotNull("cr714_datequalified");
+  if (stage === "New") {
+    query.whereNull(returned).whereNot(assigned);
+    if (logKey === "quote") query.whereNull("cr714_datequalified");
+  }
+  return query;
+}
+
+// Import: adds new rows and updates rows that changed since the last import. Never deletes.
+app.post("/api/request-log/import", requestLogAccess, logUpload.single("file"), async (request, response) => {
+  if (!request.file) {
+    response.status(400).json({ error: "Choose the .xlsx export." });
+    return;
+  }
+  let results;
+  try {
+    results = dataverseLogs.parseDataverseExport(request.file.buffer);
+  } catch (error) {
+    response.status(400).json({ error: error.status ? error.message : "That file could not be read. Make sure it is the .xlsx export." });
+    return;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const summary = [];
+  for (const result of results) {
+    const log = dataverseLogs.LOGS[result.logKey];
+    const existing = new Map(
+      (await database.connection(log.table).select(log.idColumn, "qf_row_hash")).map((row) => [row[log.idColumn], row.qf_row_hash]),
+    );
+    const toInsert = [];
+    const toUpdate = [];
+    for (const record of result.records) {
+      const savedHash = existing.get(record[log.idColumn]);
+      if (savedHash === undefined) toInsert.push({ ...record, qf_imported_at: now });
+      else if (savedHash !== record.qf_row_hash) toUpdate.push({ ...record, qf_imported_at: now });
+    }
+    await database.connection.transaction(async (trx) => {
+      for (let start = 0; start < toInsert.length; start += 25) {
+        await trx(log.table).insert(toInsert.slice(start, start + 25));
+      }
+      for (const record of toUpdate) {
+        const { [log.idColumn]: id, ...changes } = record;
+        await trx(log.table).where(log.idColumn, id).update(changes);
+      }
+    });
+    summary.push({
+      log: log.label,
+      sheet: result.sheetName,
+      added: toInsert.length,
+      updated: toUpdate.length,
+      unchanged: result.records.length - toInsert.length - toUpdate.length,
+      skipped: result.skipped,
+      missingColumns: result.missingColumns,
+    });
+  }
+  response.json({ summary });
+});
+
+// List: one page of a log, newest first, with search and stage filters.
+app.get("/api/request-log/:log", requestLogAccess, async (request, response) => {
+  const logKey = request.params.log;
+  const log = dataverseLogs.LOGS[logKey];
+  if (!log) {
+    response.status(404).json({ error: "Unknown log." });
+    return;
+  }
+  const search = String(request.query.search || "").trim();
+  const stage = String(request.query.stage || "");
+  const page = Math.max(0, Number.parseInt(request.query.page, 10) || 0);
+  const searchColumns = logKey === "quote"
+    ? ["cr714_quotenumber", "cr714_companyname", "cr714_customernumber", "cr714_submittername", "cr714_assignedto", "cr714_ppl", "cr714_recordkey"]
+    : ["cr714_accountnumber", "cr714_requestorname", "cr714_submittername", "cr714_branchwarehouse", "cr714_quoter", "cr714_assignedto", "cr714_ppl", "cr714_recordkey"];
+  const listColumns = logKey === "quote"
+    ? ["cr714_quotelogid", "createdon", "cr714_quotenumber", "cr714_companyname", "cr714_customernumber", "cr714_customerorlead", "cr714_requestpriority", "cr714_submittername", "cr714_category", "cr714_itemstoquote", "cr714_assignedto", "cr714_datequalified", "cr714_dateassigned", "cr714_datereturnedorkilled", "cr714_grossprofitpercent", "cr714_ppl"]
+    : ["cr714_mdmlogid", "createdon", "cr714_accountnumber", "cr714_requestorname", "cr714_requestsource", "cr714_branchwarehouse", "cr714_bidduedate", "cr714_category", "cr714_itemstoquote", "cr714_quoter", "cr714_assignedto", "cr714_dateassigned", "cr714_datesentbacktorepmdm", "cr714_disposition", "cr714_ppl"];
+
+  const base = () => {
+    const query = database.connection(log.table);
+    if (search) {
+      const like = `%${search}%`;
+      query.where((builder) => {
+        for (const column of searchColumns) builder.orWhere(column, "like", like);
+      });
+    }
+    return query;
+  };
+  const filtered = applyStage(base(), logKey, stage);
+  const [matching] = await filtered.clone().count({ count: "*" });
+  const rows = await filtered.clone().select(listColumns).orderBy("createdon", "desc").limit(100).offset(page * 100);
+  const stageNames = logKey === "quote" ? ["New", "Qualified", "Assigned", "Returned or killed"] : ["New", "Assigned", "Sent back"];
+  const stages = {};
+  for (const name of stageNames) {
+    const [result] = await applyStage(base(), logKey, name).count({ count: "*" });
+    stages[name] = Number(result.count);
+  }
+  const [total] = await database.connection(log.table).count({ count: "*" });
+  response.set("Cache-Control", "no-store");
+  response.json({
+    log: log.label,
+    total: Number(total.count),
+    matching: Number(matching.count),
+    page,
+    pageSize: 100,
+    stages,
+    rows: rows.map((row) => ({ ...row, stage: dataverseLogs.stageOf(logKey, row) })),
+  });
+});
+
+// Detail: every column of one row, exactly as stored.
+app.get("/api/request-log/:log/:id", requestLogAccess, async (request, response) => {
+  const log = dataverseLogs.LOGS[request.params.log];
+  if (!log) {
+    response.status(404).json({ error: "Unknown log." });
+    return;
+  }
+  const row = await database.connection(log.table).where(log.idColumn, request.params.id).first();
+  if (!row) {
+    response.status(404).json({ error: "Row not found." });
+    return;
+  }
+  response.json({ log: log.label, row });
+});
+

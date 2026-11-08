@@ -1,0 +1,39 @@
+FILE: public/workspace.js
+
+--- 7a. Search for this line, click at its END, press Enter, paste the two lines below.
+SEARCH:
+const pageCopy = {
+PASTE ON THE NEW LINES:
+  "/margin/locked-prices": ["Locked prices", "Prices locked into customer accounts. Import CSV files and review margins."],
+  "/margin/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
+
+--- 7b. Search for this line, click at its END, press Enter, paste the whole block below.
+SEARCH:
+const pageBody = document.querySelector("#page-body");
+PASTE ON THE NEW LINES:
+  if (page.href === "/margin/locked-prices") {
+    pageBody.innerHTML = `
+      <div id="locked-prices-root">
+        <section class="request-section items-section" aria-labelledby="lp-import-title">
+          <div class="items-heading"><div><h2 class="section-title" id="lp-import-title">Import a CSV file</h2><p class="section-description">Preview first. Rows already saved are skipped, so the same file can be uploaded twice safely.</p></div></div>
+          <div class="lp-import-row">
+            <label class="visually-hidden" for="lp-file">Locked prices CSV file</label>
+            <input id="lp-file" type="file" accept=".csv" />
+            <button class="secondary-button" id="lp-preview" type="button">Preview</button>
+            <button class="settings-save-button" id="lp-import" type="button" hidden>Save prices</button>
+            <p class="request-feedback" id="lp-import-status" role="status" aria-live="polite"></p>
+          </div>
+          <div id="lp-preview-area"></div>
+        </section>
+        <div class="lp-cards" id="lp-totals" role="group" aria-label="Locked-in price totals"></div>
+        <form class="lp-filters" id="lp-filters" role="search">
+          <label>Search<input name="search" type="search" placeholder="Account, company, item, PPL or Q-number" /></label>
+          <label>From<input name="from" type="date" /></label>
+          <label>To<input name="to" type="date" /></label>
+          <label class="lp-check"><input name="belowFloor" type="checkbox" /> Below margin floor only</label>
+          <button class="secondary-button" type="submit">Apply</button>
+        </form>
+        <div id="lp-list"></div>
+      </div>`;
+    return;
+  }

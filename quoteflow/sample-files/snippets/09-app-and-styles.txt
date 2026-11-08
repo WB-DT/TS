@@ -1,0 +1,27 @@
+FILE: views/app.html
+
+--- 9a. Search for this line, click at its END, press Enter, paste the line below it.
+SEARCH:
+<script src="/users.js" defer></script>
+PASTE ON THE NEW LINE:
+    <script src="/locked-prices-page.js" defer></script>
+
+FILE: public/styles.css
+
+--- 9b. Press Ctrl + End, press Enter, paste everything below.
+/* Locked prices (Margin Manager) */
+.lp-import-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 18px; }
+.lp-import-row input[type="file"] { color: var(--text); font: inherit; font-size: calc(11px * var(--text-scale)); }
+.lp-import-row .request-feedback { flex-basis: 100%; }
+#lp-preview-area { padding: 0 18px 16px; }
+.lp-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 0 0 16px; }
+.lp-cards div { padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface); }
+.lp-cards strong { display: block; color: var(--text); font-size: calc(22px * var(--text-scale)); font-weight: 600; }
+.lp-cards span { color: var(--text-muted); font-size: calc(11px * var(--text-scale)); }
+.lp-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin: 0 0 12px; }
+.lp-filters label { display: grid; gap: 5px; color: var(--text-muted); font-size: calc(11px * var(--text-scale)); }
+.lp-filters input[type="search"], .lp-filters input[type="date"] { min-height: 34px; padding: 0 9px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface); color: var(--text); font: inherit; font-size: calc(11px * var(--text-scale)); }
+.lp-filters input[type="search"] { min-width: 260px; }
+.lp-filters .lp-check { display: flex; align-items: center; gap: 7px; min-height: 34px; }
+.lp-problem { display: block; margin-top: 4px; color: var(--review-text); font-size: calc(10px * var(--text-scale)); }
+#lp-list td:nth-child(1), #lp-list td:nth-child(11) { white-space: nowrap; }

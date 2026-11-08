@@ -1,0 +1,30 @@
+FILE: public/workspace.js
+
+--- 4a. Search for this line, click at its END, press Enter, paste the two lines below.
+SEARCH:
+const pageCopy = {
+PASTE ON THE NEW LINES:
+  "/margin/cross-reference": ["Cross-reference", "Upload the files one at a time; every line is calculated like the Cross Reference Tool."],
+  "/manager/cross-reference": ["Cross-reference", "Upload the files one at a time; every line is calculated like the Cross Reference Tool."],
+
+--- 4b. Search for this line, click at its END, press Enter, paste the whole block below.
+SEARCH:
+const pageBody = document.querySelector("#page-body");
+PASTE ON THE NEW LINES (everything from "if" to the last "}"):
+  if (page.href.endsWith("/cross-reference")) {
+    pageBody.innerHTML = `
+      <div id="xref-root">
+        <section class="request-section items-section" aria-labelledby="xref-runs-title">
+          <div class="items-heading"><div><h2 class="section-title" id="xref-runs-title">Runs</h2><p class="section-description">Each run prices one list of items, such as an account or a quote. Its files are kept with it.</p></div></div>
+          <form class="xr-new" id="xref-new">
+            <label class="visually-hidden" for="xref-new-name">Run name</label>
+            <input id="xref-new-name" name="name" maxlength="160" placeholder="Name, for example C1234566 or Q-34721" />
+            <button class="settings-save-button" type="submit">Start a run</button>
+            <p class="request-feedback" id="xref-new-status" role="status" aria-live="polite"></p>
+          </form>
+          <div id="xref-runs"></div>
+        </section>
+        <section class="xr-detail" id="xref-detail" aria-live="polite" hidden></section>
+      </div>`;
+    return;
+  }

@@ -1,0 +1,13 @@
+FILE: auth.js
+
+--- 3a. Search for this text, click at the END of that line, press Enter, paste the line below it.
+SEARCH:
+href: "/manager/request-log"
+PASTE ON THE NEW LINE:
+    { label: "Read a document", href: "/manager/read-document", icon: "upload" },
+
+--- 3b. Search for this text, click at the END of that line, press Enter, paste the line below it.
+SEARCH:
+href: "/quoter/my-quotes"
+PASTE ON THE NEW LINE:
+    { label: "Read a document", href: "/quoter/read-document", icon: "upload" },

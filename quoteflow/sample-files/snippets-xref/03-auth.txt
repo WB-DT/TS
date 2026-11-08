@@ -1,0 +1,13 @@
+FILE: auth.js
+
+--- 3a. Search for this text, click at the END of that line, press Enter, paste the line below it.
+SEARCH:
+href: "/margin/locked-prices"
+PASTE ON THE NEW LINE:
+    { label: "Cross-reference", href: "/margin/cross-reference", icon: "templates" },
+
+--- 3b. Search for this text, click at the END of that line, press Enter, paste the line below it.
+SEARCH:
+href: "/manager/request-log"
+PASTE ON THE NEW LINE:
+    { label: "Cross-reference", href: "/manager/cross-reference", icon: "templates" },
