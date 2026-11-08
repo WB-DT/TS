@@ -113,6 +113,7 @@ function computeQuote(lines, pricingFiles, costColumn) {
 }
 
 // Load form: 18 columns, no header row, one row per item and UOM. Pack Ship, N/A and status lines are left out.
+// Columns C, J and L to Q are blank on the Load Form tab of the color key and stay blank here.
 function loadFormRows(computed, details) {
   const date = (iso) => {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ""));
@@ -128,9 +129,9 @@ function loadFormRows(computed, details) {
     seen.add(key);
     const price = Math.round(num(line.sell_price) * 100) / 100;
     rows.push([
-      details.contractNumber, details.description, "1", date(details.startDate), date(details.endDate),
+      details.contractNumber, details.description, "", date(details.startDate), date(details.endDate),
       details.contractType, details.classification, String(line.our_item).toUpperCase(), String(line.our_uom).toUpperCase(),
-      "0", String(price), "", "", "", "N", "", "", details.contractOwner,
+      "", String(price), "", "", "", "", "", "", details.contractOwner,
     ]);
   }
   return rows;
@@ -405,10 +406,10 @@ function register(app, { auth, database, multer, requestUpload, writeQuoteFile, 
       contractNumber: String(b.contractNumber || "").trim(), description: String(b.description || "").trim(),
       startDate: String(b.startDate || "").trim(), endDate: String(b.endDate || "").trim(),
       contractType: String(b.contractType || "").trim(), classification: String(b.classification || "").trim(),
-      contractOwner: String(b.contractOwner || "Contract owner").trim(),
+      contractOwner: String(b.contractOwner || "").trim(),
     };
-    const missing = ["contractNumber", "startDate", "endDate", "contractType", "classification"].filter((k) => !details[k]);
-    if (missing.length) return fail(response, 400, "Fill in the contract number, dates, contract type and classification.");
+    const missing = ["contractNumber", "startDate", "endDate", "contractType", "classification", "contractOwner"].filter((k) => !details[k]);
+    if (missing.length) return fail(response, 400, "Fill in the contract number, dates, contract type, classification and contract owner.");
     const rows = loadFormRows(state, details);
     if (!rows.length) return fail(response, 400, "No lines are ready: each needs our item, UOM and a sell price.");
     const csv = rows.map((r) => r.map(csvCell).join(",")).join("\r\n") + "\r\n";
