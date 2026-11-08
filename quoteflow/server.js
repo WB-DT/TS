@@ -15,6 +15,10 @@ const ExcelJS = require("exceljs");
 const auth = require("./auth");
 const fieldCatalog = require("./fields");
 const pricing = require("./pricing");
+const xref = require("./xref");
+const ocr = require("./ocr");
+const dataverseLogs = require("./dataverse-logs");
+const lockedPrices = require("./locked-prices");
 const teamsImport = require("./teams-import");
 const quoteTemplates = require("./templates");
 const database = require("./db");
@@ -84,9 +88,10 @@ const reportUpload = multer({
   },
 });
 
-app.use(express.json({ limit: "64kb" }));
+app.use(express.json({ limit: "2mb" }));
 app.use(auth.sessionMiddleware);
 auth.registerAuthRoutes(app);
+require("./microsoft-auth").register(app, { database, safeUser: auth.safeUser, landingPath: auth.landingPath });
 app.use(express.static(path.join(__dirname, "public"), { index: false }));
 
 app.get("/login", auth.redirectIfAuthenticated, (_request, response) => {
@@ -192,6 +197,451 @@ app.post("/api/teams-import/preview", auth.requireRole("Manager", "Qualifier"), 
     requests: toReview.slice(0, 200),
   });
 });
+// ---------- Locked prices (Margin Manager) ----------
+const lockedPriceAccess = auth.requireRole("Margin Manager", "Manager");
+
+// Reads the CSV and marks rows that are already saved. Shared by Preview and Import.
+async function readLockedPriceFile(file) {
+  const result = lockedPrices.parseLockedPrices(file.buffer, file.originalname);
+  const accounts = [...new Set(result.records.map((record) => record.accountNumber).filter(Boolean))];
+  const saved = new Set();
+  for (let start = 0; start < accounts.length; start += 500) {
+    const rows = await database.connection("locked_prices")
+      .whereIn("account_number", accounts.slice(start, start + 500))
+      .select("account_number", "item_number", "uom", "locked_in_date");
+    for (const row of rows) {
+      saved.add(lockedPrices.rowKey({ accountNumber: row.account_number, itemNumber: row.item_number, uom: row.uom, lockedInDate: row.locked_in_date }));
+    }
+  }
+  const records = result.records.map((record) => ({
+    ...record,
+    alreadySaved: record.status === "Ready" && saved.has(lockedPrices.rowKey(record)),
+  }));
+  const ready = records.filter((record) => record.status === "Ready" && !record.alreadySaved);
+  return {
+    columnsMissing: result.columnsMissing,
+    records,
+    ready,
+    summary: {
+      total: records.length,
+      ready: ready.length,
+      alreadySaved: records.filter((record) => record.alreadySaved).length,
+      needsAttention: records.filter((record) => record.status !== "Ready").length,
+    },
+  };
+}
+
+function lockedPriceFileError(error, response) {
+  response.status(400).json({ error: error.status ? error.message : "That file could not be read. Make sure it is a .csv file." });
+}
+
+// Preview: shows what the CSV holds. Saves nothing.
+app.post("/api/locked-prices/preview", lockedPriceAccess, reportUpload.single("file"), async (request, response) => {
+  if (!request.file) {
+    response.status(400).json({ error: "Choose a CSV file." });
+    return;
+  }
+  let result;
+  try {
+    result = await readLockedPriceFile(request.file);
+  } catch (error) {
+    lockedPriceFileError(error, response);
+    return;
+  }
+  response.json({
+    columnsMissing: result.columnsMissing,
+    summary: result.summary,
+    // New and flagged rows only, capped so a big file stays fast.
+    records: result.records.filter((record) => !record.alreadySaved).slice(0, 200),
+  });
+});
+
+// Import: saves every Ready row that isn't saved yet. Flagged rows are skipped.
+app.post("/api/locked-prices/import", lockedPriceAccess, reportUpload.single("file"), async (request, response) => {
+  if (!request.file) {
+    response.status(400).json({ error: "Choose a CSV file." });
+    return;
+  }
+  let result;
+  try {
+    result = await readLockedPriceFile(request.file);
+  } catch (error) {
+    lockedPriceFileError(error, response);
+    return;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const rows = result.ready.map((record) => ({
+    q_number: record.qNumber,
+    account_number: record.accountNumber,
+    company_name: record.companyName,
+    ppl: record.ppl,
+    item_number: record.itemNumber,
+    item_description: record.itemDescription,
+    uom: record.uom,
+    sell_price: record.sellPrice,
+    cost: record.cost,
+    gp_percent: record.gpPercent,
+    locked_in_date: record.lockedInDate,
+    approved_by: record.approvedBy,
+    source: "csv",
+    source_file: String(request.file.originalname || "").slice(0, 255),
+    imported_by_id: request.user.id,
+    imported_at: now,
+  }));
+  await database.connection.transaction(async (trx) => {
+    for (let start = 0; start < rows.length; start += 100) {
+      await trx("locked_prices").insert(rows.slice(start, start + 100));
+    }
+  });
+  response.json({ saved: rows.length, skipped: result.summary.total - rows.length });
+});
+
+// List: the saved prices, newest first, with optional filters.
+app.get("/api/locked-prices", lockedPriceAccess, async (request, response) => {
+  const search = String(request.query.search || "").trim();
+  const from = String(request.query.from || "");
+  const to = String(request.query.to || "");
+  const settings = await database.settings.get();
+  const floor = Number(settings.minimum_margin || 0.1);
+  const query = database.connection("locked_prices");
+  if (search) {
+    const like = `%${search}%`;
+    query.where((builder) => builder
+      .where("account_number", "like", like)
+      .orWhere("company_name", "like", like)
+      .orWhere("item_number", "like", like)
+      .orWhere("ppl", "like", like)
+      .orWhere("q_number", "like", like));
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(from)) query.where("locked_in_date", ">=", from);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(to)) query.where("locked_in_date", "<=", to);
+  if (request.query.belowFloor === "true") query.where("gp_percent", "<", floor);
+  const rows = await query.clone().orderBy("locked_in_date", "desc").orderBy("account_number").limit(500);
+  const [totals] = await query.clone().count({ count: "*" });
+  const [all] = await database.connection("locked_prices")
+    .count({ count: "*" })
+    .countDistinct({ accounts: "account_number" });
+  const [below] = await database.connection("locked_prices").where("gp_percent", "<", floor).count({ count: "*" });
+  response.set("Cache-Control", "no-store");
+  response.json({
+    floor,
+    totals: { prices: Number(all.count), accounts: Number(all.accounts), belowFloor: Number(below.count), matching: Number(totals.count) },
+    rows,
+  });
+});
+
+// ---------- Request log (copies of the Dataverse Quote Log and MDM Log) ----------
+const requestLogAccess = auth.requireRole("Manager", "Qualifier");
+const logUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 80 * 1024 * 1024, files: 1 } });
+
+// Which rows count as each stage, written as database conditions (matches stageOf in dataverse-logs.js).
+function applyStage(query, logKey, stage) {
+  const returned = logKey === "quote" ? "cr714_datereturnedorkilled" : "cr714_datesentbacktorepmdm";
+  const assigned = (builder) => {
+    builder.whereNotNull("cr714_assignedto").orWhereNotNull("cr714_dateassigned");
+    if (logKey === "mdm") builder.orWhereNotNull("cr714_quoter");
+  };
+  if (stage === "Returned or killed" || stage === "Sent back") query.whereNotNull(returned);
+  if (stage === "Assigned") query.whereNull(returned).where(assigned);
+  if (stage === "Qualified") query.whereNull(returned).whereNot(assigned).whereNotNull("cr714_datequalified");
+  if (stage === "New") {
+    query.whereNull(returned).whereNot(assigned);
+    if (logKey === "quote") query.whereNull("cr714_datequalified");
+  }
+  return query;
+}
+
+// Import: adds new rows and updates rows that changed since the last import. Never deletes.
+app.post("/api/request-log/import", requestLogAccess, logUpload.single("file"), async (request, response) => {
+  if (!request.file) {
+    response.status(400).json({ error: "Choose the .xlsx export." });
+    return;
+  }
+  let results;
+  try {
+    results = dataverseLogs.parseDataverseExport(request.file.buffer);
+  } catch (error) {
+    response.status(400).json({ error: error.status ? error.message : "That file could not be read. Make sure it is the .xlsx export." });
+    return;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const summary = [];
+  for (const result of results) {
+    const log = dataverseLogs.LOGS[result.logKey];
+    const existing = new Map(
+      (await database.connection(log.table).select(log.idColumn, "qf_row_hash")).map((row) => [row[log.idColumn], row.qf_row_hash]),
+    );
+    const toInsert = [];
+    const toUpdate = [];
+    for (const record of result.records) {
+      const savedHash = existing.get(record[log.idColumn]);
+      if (savedHash === undefined) toInsert.push({ ...record, qf_imported_at: now });
+      else if (savedHash !== record.qf_row_hash) toUpdate.push({ ...record, qf_imported_at: now });
+    }
+    await database.connection.transaction(async (trx) => {
+      for (let start = 0; start < toInsert.length; start += 25) {
+        await trx(log.table).insert(toInsert.slice(start, start + 25));
+      }
+      for (const record of toUpdate) {
+        const { [log.idColumn]: id, ...changes } = record;
+        await trx(log.table).where(log.idColumn, id).update(changes);
+      }
+    });
+    summary.push({
+      log: log.label,
+      sheet: result.sheetName,
+      added: toInsert.length,
+      updated: toUpdate.length,
+      unchanged: result.records.length - toInsert.length - toUpdate.length,
+      skipped: result.skipped,
+      missingColumns: result.missingColumns,
+    });
+  }
+  response.json({ summary });
+});
+
+// List: one page of a log, newest first, with search and stage filters.
+app.get("/api/request-log/:log", requestLogAccess, async (request, response) => {
+  const logKey = request.params.log;
+  const log = dataverseLogs.LOGS[logKey];
+  if (!log) {
+    response.status(404).json({ error: "Unknown log." });
+    return;
+  }
+  const search = String(request.query.search || "").trim();
+  const stage = String(request.query.stage || "");
+  const page = Math.max(0, Number.parseInt(request.query.page, 10) || 0);
+  const searchColumns = logKey === "quote"
+    ? ["cr714_quotenumber", "cr714_companyname", "cr714_customernumber", "cr714_submittername", "cr714_assignedto", "cr714_ppl", "cr714_recordkey"]
+    : ["cr714_accountnumber", "cr714_requestorname", "cr714_submittername", "cr714_branchwarehouse", "cr714_quoter", "cr714_assignedto", "cr714_ppl", "cr714_recordkey"];
+  const listColumns = logKey === "quote"
+    ? ["cr714_quotelogid", "createdon", "cr714_quotenumber", "cr714_companyname", "cr714_customernumber", "cr714_customerorlead", "cr714_requestpriority", "cr714_submittername", "cr714_category", "cr714_itemstoquote", "cr714_assignedto", "cr714_datequalified", "cr714_dateassigned", "cr714_datereturnedorkilled", "cr714_grossprofitpercent", "cr714_ppl"]
+    : ["cr714_mdmlogid", "createdon", "cr714_accountnumber", "cr714_requestorname", "cr714_requestsource", "cr714_branchwarehouse", "cr714_bidduedate", "cr714_category", "cr714_itemstoquote", "cr714_quoter", "cr714_assignedto", "cr714_dateassigned", "cr714_datesentbacktorepmdm", "cr714_disposition", "cr714_ppl"];
+
+  const base = () => {
+    const query = database.connection(log.table);
+    if (search) {
+      const like = `%${search}%`;
+      query.where((builder) => {
+        for (const column of searchColumns) builder.orWhere(column, "like", like);
+      });
+    }
+    return query;
+  };
+  const filtered = applyStage(base(), logKey, stage);
+  const [matching] = await filtered.clone().count({ count: "*" });
+  const rows = await filtered.clone().select(listColumns).orderBy("createdon", "desc").limit(100).offset(page * 100);
+  const stageNames = logKey === "quote" ? ["New", "Qualified", "Assigned", "Returned or killed"] : ["New", "Assigned", "Sent back"];
+  const stages = {};
+  for (const name of stageNames) {
+    const [result] = await applyStage(base(), logKey, name).count({ count: "*" });
+    stages[name] = Number(result.count);
+  }
+  const [total] = await database.connection(log.table).count({ count: "*" });
+  response.set("Cache-Control", "no-store");
+  response.json({
+    log: log.label,
+    total: Number(total.count),
+    matching: Number(matching.count),
+    page,
+    pageSize: 100,
+    stages,
+    rows: rows.map((row) => ({ ...row, stage: dataverseLogs.stageOf(logKey, row) })),
+  });
+});
+
+// Detail: every column of one row, exactly as stored.
+app.get("/api/request-log/:log/:id", requestLogAccess, async (request, response) => {
+  const log = dataverseLogs.LOGS[request.params.log];
+  if (!log) {
+    response.status(404).json({ error: "Unknown log." });
+    return;
+  }
+  const row = await database.connection(log.table).where(log.idColumn, request.params.id).first();
+  if (!row) {
+    response.status(404).json({ error: "Row not found." });
+    return;
+  }
+  response.json({ log: log.label, row });
+});
+
+
+// ---------- Read a document (OCR proof) ----------
+// Reads an uploaded PDF or photo in memory and returns the item lines it finds. Nothing is saved.
+const ocrAccess = auth.requireRole("Manager", "Quoter");
+const ocrUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024, files: 1 } });
+
+app.post("/api/ocr/read", ocrAccess, ocrUpload.single("file"), async (request, response) => {
+  if (!request.file) {
+    response.status(400).json({ error: "Choose a PDF or photo." });
+    return;
+  }
+  try {
+    const result = await ocr.readDocument({ buffer: request.file.buffer, fileName: request.file.originalname });
+    response.set("Cache-Control", "no-store");
+    response.json(result);
+  } catch (error) {
+    const status = Number(error.status) || 500;
+    if (status >= 500) console.error("OCR failed:", error.message);
+    response.status(status).json({
+      error: status >= 500 ? "The document couldn't be read. Try a clearer photo or a different file." : error.message,
+    });
+  }
+});
+
+// ---------- Cross-reference (Margin Manager) ----------
+// The same calculations as the Cross Reference Tool workbook, run on files uploaded one at a time.
+const xrefAccess = auth.requireRole("Margin Manager", "Manager");
+const xrefUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 40 * 1024 * 1024, files: 1 } });
+const XREF_KINDS = ["items", "account", "house", "costing"];
+
+async function loadXrefRun(id) {
+  const run = await database.connection("xref_runs").where({ id }).first();
+  if (!run) return null;
+  const fileRows = await database.connection("xref_files").where({ run_id: id });
+  const files = {};
+  const fileInfo = {};
+  for (const row of fileRows) {
+    files[row.kind] = { headers: JSON.parse(row.headers_json || "[]"), rows: JSON.parse(row.rows_json || "[]") };
+    fileInfo[row.kind] = { fileName: row.file_name, sheet: row.sheet_name, rows: row.row_count, uploadedAt: row.uploaded_at };
+  }
+  return { run, files, fileInfo, targets: JSON.parse(run.targets_json || "{}") };
+}
+
+function xrefResult(loaded) {
+  const { run, files, fileInfo, targets } = loaded;
+  const costColumn = run.cost_column === null ? xref.DEFAULT_COSTING_COST_COLUMN : run.cost_column;
+  const result = xref.crossReference(files, { costColumn, targets });
+  return {
+    run: { id: run.id, name: run.name, createdBy: run.created_by_name, createdAt: run.created_at, updatedAt: run.updated_at },
+    files: fileInfo,
+    costColumn,
+    costingHeaders: files.costing ? files.costing.headers : [],
+    ...result,
+  };
+}
+
+app.get("/api/xref/runs", xrefAccess, async (_request, response) => {
+  const runs = await database.connection("xref_runs").orderBy("updated_at", "desc").limit(50)
+    .select("id", "name", "created_by_name", "created_at", "updated_at");
+  const files = await database.connection("xref_files").whereIn("run_id", runs.map((run) => run.id)).select("run_id", "kind");
+  response.set("Cache-Control", "no-store");
+  response.json({ runs: runs.map((run) => ({ ...run, kinds: files.filter((file) => file.run_id === run.id).map((file) => file.kind) })) });
+});
+
+app.post("/api/xref/runs", xrefAccess, async (request, response) => {
+  const name = String(request.body?.name || "").trim().slice(0, 160);
+  if (!name) {
+    response.status(400).json({ error: "Give the run a name, such as the account number or Q-number." });
+    return;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const id = randomBytes(16).toString("hex");
+  await database.connection("xref_runs").insert({
+    id, name, cost_column: null, targets_json: "{}", created_by_id: request.user.id, created_by_name: request.user.name, created_at: now, updated_at: now,
+  });
+  response.status(201).json({ id });
+});
+
+app.get("/api/xref/runs/:id", xrefAccess, async (request, response) => {
+  const loaded = await loadXrefRun(request.params.id);
+  if (!loaded) {
+    response.status(404).json({ error: "Run not found." });
+    return;
+  }
+  response.set("Cache-Control", "no-store");
+  response.json(xrefResult(loaded));
+});
+
+// Upload one file. Replacing the items list clears the target margins, since the lines changed.
+app.post("/api/xref/runs/:id/files/:kind", xrefAccess, xrefUpload.single("file"), async (request, response) => {
+  const { id, kind } = request.params;
+  if (!XREF_KINDS.includes(kind)) {
+    response.status(404).json({ error: "Unknown file type." });
+    return;
+  }
+  if (!(await database.connection("xref_runs").where({ id }).first())) {
+    response.status(404).json({ error: "Run not found." });
+    return;
+  }
+  if (!request.file) {
+    response.status(400).json({ error: "Choose an .xlsx or .csv file." });
+    return;
+  }
+  let parsed;
+  try {
+    parsed = xref.readUpload(request.file.buffer, kind);
+  } catch (error) {
+    response.status(error.status || 400).json({ error: error.status ? error.message : "That file couldn't be read." });
+    return;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  await database.connection.transaction(async (trx) => {
+    await trx("xref_files").where({ run_id: id, kind }).delete();
+    await trx("xref_files").insert({
+      run_id: id, kind, file_name: request.file.originalname.slice(0, 255), sheet_name: String(parsed.sheet).slice(0, 120),
+      row_count: parsed.rows.length, headers_json: JSON.stringify(parsed.headers), rows_json: JSON.stringify(parsed.rows),
+      uploaded_by_id: request.user.id, uploaded_at: now,
+    });
+    const changes = { updated_at: now };
+    if (kind === "items") changes.targets_json = "{}";
+    await trx("xref_runs").where({ id }).update(changes);
+  });
+  const loaded = await loadXrefRun(id);
+  response.json(xrefResult(loaded));
+});
+
+// Save the costing cost column and the target margins.
+app.put("/api/xref/runs/:id", xrefAccess, async (request, response) => {
+  const loaded = await loadXrefRun(request.params.id);
+  if (!loaded) {
+    response.status(404).json({ error: "Run not found." });
+    return;
+  }
+  const changes = { updated_at: Math.floor(Date.now() / 1000) };
+  if (typeof request.body?.costColumn === "string") changes.cost_column = request.body.costColumn.slice(0, 80);
+  if (request.body?.targets && typeof request.body.targets === "object") {
+    const targets = {};
+    for (const [line, value] of Object.entries(request.body.targets)) {
+      const number = Number(value);
+      if (/^\d+$/.test(line) && Number.isFinite(number) && number > 0 && number < 1) targets[line] = number;
+    }
+    changes.targets_json = JSON.stringify(targets);
+  }
+  await database.connection("xref_runs").where({ id: request.params.id }).update(changes);
+  response.json(xrefResult(await loadXrefRun(request.params.id)));
+});
+
+// Export the results in the same column order as the workbook's Usage or Consumption tab.
+app.get("/api/xref/runs/:id/export", xrefAccess, async (request, response) => {
+  const loaded = await loadXrefRun(request.params.id);
+  if (!loaded) {
+    response.status(404).json({ error: "Run not found." });
+    return;
+  }
+  const result = xrefResult(loaded);
+  const XLSX = require("xlsx");
+  const rows = result.lines.map((l) => ({
+    Order: l.line, Items: l.item, UMs: l.uom, Description: l.description, Category: l.category, Qty: l.qty,
+    Price: l.price, "Extended Price": l.extendedPrice, "Financial Cost": l.financialCost, "Cost From": l.costSource,
+    "Extended Cost": l.extendedCost, "Current Margin": l.currentMargin, "Target Margin": l.targetMargin,
+    "Price at Target Margin": l.priceAtTarget, "Pricing Method": l.pricingMethod, Status: l.status,
+    "Sub F/Inactive": l.substitute, Sustainable: l.sustainable, "Has Content": l.hasContent,
+    "Catalog Price": l.catalogPrice, "Review Needed": l.reviewNeeded,
+  }));
+  const book = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(rows), "Cross reference");
+  const buffer = XLSX.write(book, { type: "buffer", bookType: "xlsx" });
+  const safeName = result.run.name.replace(/[^A-Za-z0-9 _-]/g, "").trim() || "cross-reference";
+  response.set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  response.set("Content-Disposition", `attachment; filename="${safeName} - cross reference.xlsx"`);
+  response.send(buffer);
+});
+
+
+require("./quote-stages").register(app, { auth, database, multer, requestUpload, writeQuoteFile, uploadsRoot: __dirname });
+
+
 app.get("/api/request-options", auth.requireRole("Rep"), async (request, response) => {
   const options = await database.users.listRequestOptions(request.user.id);
   response.set("Cache-Control", "no-store");
@@ -433,6 +883,7 @@ async function writeQuoteFile(uploaded, fileId) {
 }
 
 async function removeStoredFile(storageKey) {
+  return; // Files are kept forever, so they can always be opened and checked.
   if (!storageKey) return;
   const absolutePath = path.join(__dirname, storageKey);
   if (!absolutePath.startsWith(path.join(__dirname, "uploads"))) return;

@@ -10,6 +10,7 @@ const demoPasswords = new Map([
   ["quoter2@demo.com", "demo"],
   ["reviser1@demo.com", "demo"],
   ["reviser2@demo.com", "demo"],
+  ["margin1@demo.com", "demo"],
 ]);
 
 // TODO(identity): When Microsoft Entra ID sign-in replaces these demo accounts,
@@ -26,6 +27,7 @@ const navigation = {
     { label: "Dashboard", href: "/qualifier/home", icon: "dashboard" },
     { label: "New request (intake)", href: "/qualifier/new-request", icon: "quotes" },
     { label: "Screening queue", href: "/qualifier/screening-queue", icon: "screening" },
+    { label: "Request log", href: "/qualifier/request-log", icon: "list" },
     { label: "Import from Teams", href: "/qualifier/teams-import", icon: "upload" },
     { label: "Quote log", href: "/qualifier/quote-log", icon: "list" },
     { label: "My settings", href: "/qualifier/my-settings", icon: "settings", hidden: true },
@@ -34,6 +36,10 @@ const navigation = {
     { label: "Dashboard", href: "/manager/home", icon: "dashboard" },
     { label: "New request (intake)", href: "/manager/new-request", icon: "quotes" },
     { label: "Quote log", href: "/manager/quote-log", icon: "list" },
+    { label: "Request log", href: "/manager/request-log", icon: "list" },
+    { label: "Cross-reference", href: "/manager/cross-reference", icon: "templates" },
+    { label: "Read a document", href: "/manager/read-document", icon: "upload" },
+
     { label: "Import from Teams", href: "/manager/teams-import", icon: "upload" },
     { label: "Assignments", href: "/manager/assignments", icon: "assign" },
     { label: "Approval queue", href: "/manager/approval-queue", icon: "review" },
@@ -43,9 +49,16 @@ const navigation = {
     { label: "Settings", href: "/manager/settings", icon: "settings" },
     { label: "My settings", href: "/manager/my-settings", icon: "settings", hidden: true },
   ],
+  "Margin Manager": [
+    { label: "Locked prices", href: "/margin/locked-prices", icon: "metrics" },
+    { label: "Cross-reference", href: "/margin/cross-reference", icon: "templates" },
+    { label: "My settings", href: "/margin/my-settings", icon: "settings", hidden: true },
+  ],
   Quoter: [
     { label: "Dashboard", href: "/quoter/home", icon: "dashboard" },
     { label: "My quotes", href: "/quoter/my-quotes", icon: "quotes" },
+    { label: "Read a document", href: "/quoter/read-document", icon: "upload" },
+
     { label: "Quote workspace", href: "/quoter/quote-workspace", icon: "workspace" },
     { label: "My settings", href: "/quoter/my-settings", icon: "settings", hidden: true },
   ],
@@ -241,6 +254,7 @@ module.exports = {
   sessionMiddleware,
   registerAuthRoutes,
   registerDemoPassword,
+    safeUser,
   requireAuth,
   requireRole,
   requirePageAccess,
