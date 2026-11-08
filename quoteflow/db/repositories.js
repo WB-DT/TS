@@ -1558,7 +1558,10 @@ function createRepositories(knex) {
         error.status = 404;
         throw error;
       }
-      const quoter = await trx("users").where({ id: quoterId, role: "Quoter", active: true }).first();
+      // Anyone whose job title includes quoting can be assigned (supervisors and managers quote too).
+      const candidate = await trx("users").where({ id: quoterId, active: true }).first();
+      const quotes = candidate && (candidate.role === "Quoter" || await trx("user_roles").where({ user_id: quoterId, role: "Quoter" }).first());
+      const quoter = quotes ? candidate : null;
       if (!quoter) {
         const error = new Error("Choose an active Quoter.");
         error.status = 400;

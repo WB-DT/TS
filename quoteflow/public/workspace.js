@@ -1,3 +1,18 @@
+// Every request to QuoteFlow says which page it came from, so each browser tab works
+// with the right role (see effectiveUser in auth.js).
+(function tagRequestsWithPage() {
+  const original = window.fetch.bind(window);
+  window.fetch = (input, init = {}) => {
+    const url = typeof input === "string" ? input : input && input.url ? input.url : "";
+    if (url.startsWith("/api/")) {
+      const headers = new Headers(init.headers || {});
+      headers.set("X-QuoteFlow-Page", window.location.pathname);
+      init = { ...init, headers };
+    }
+    return original(input, init);
+  };
+})();
+
 const iconMarkup = {
   list: '<svg viewBox="0 0 20 20" fill="none"><path d="M4 5h12M4 10h12M4 15h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
   assign: '<svg viewBox="0 0 20 20" fill="none"><path d="M4 4.5h12v11H4zM7 8h6M7 11h3" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/><path d="m12 13 1.5 1.5L16 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -16,43 +31,35 @@ const iconMarkup = {
   settings: '<svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M10 2.8v2M10 15.2v2M2.8 10h2M15.2 10h2M5 5l1.4 1.4M13.6 13.6 15 15M15 5l-1.4 1.4M6.4 13.6 5 15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
 };
 
+// Page titles, with a one-line explanation shown in the ⓘ hover next to the title.
 const pageCopy = {
-   "/margin/cross-reference": ["Cross-reference", "Upload the files one at a time; every line is calculated like the Cross Reference Tool."],
+  "/manager/home": ["Dashboard", "Your team's day at a glance."],
+  "/qualifier/home": ["Dashboard", "Your screening queue at a glance."],
+  "/reviser/home": ["Dashboard", "Your revision queue at a glance."],
+  "/quoter/home": ["Dashboard", "Your quotes at a glance."],
+  "/quoter/quote-workspace": ["Quote workspace", "Work a quote stage by stage: read the files, match our items, upload the pricing files, price, then review and submit."],
+  "/quoter/my-quotes": ["My quotes", "Your quotes in progress, in revision and completed."],
+  "/quoter/completed": ["Completed quotes", "Approved quotes: export the load form and favorites list, lock in, confirm, then send the email to the rep."],
+  "/qualifier/screening-queue": ["Screening", "New requests. Check them, pick the template and specialty, then approve, ask for more info or decline."],
+  "/manager/assignments": ["Workload & assignments", "Assign screened quotes and see who is behind."],
+  "/reviser/review-queue": ["Revision queue", "Quotes waiting for revision. You can't revise a quote you quoted."],
+  "/manager/approval-queue": ["Approval queue", "Quotes waiting for final approval."],
+  "/reviser/approval-queue": ["Approval queue", "Quotes waiting for final approval."],
+  "/manager/request-log": ["Request log", "The team's Quote Log and MDM Log, imported from Dataverse."],
+  "/qualifier/request-log": ["Request log", "The team's Quote Log and MDM Log, imported from Dataverse."],
+  "/margin/locked-prices": ["Locked prices", "Prices locked into customer accounts. Import CSV files and review margins."],
+  "/margin/cross-reference": ["Cross-reference", "Upload the files one at a time; every line is calculated like the Cross Reference Tool."],
   "/manager/cross-reference": ["Cross-reference", "Upload the files one at a time; every line is calculated like the Cross Reference Tool."],
+  "/manager/reports": ["Reports", "Pipeline, cycle time and coaching reports."],
+  "/manager/settings": ["Settings", "Users, job titles, reporting lines, specialty tags, the reps' management contacts, and the email and follow-up settings."],
+  "/manager/coaching": ["Coaching", "Review and share coaching notes."],
   "/manager/read-document": ["Read a document", "Proof that QuoteFlow can read the item lines in a PDF or photo."],
   "/quoter/read-document": ["Read a document", "Proof that QuoteFlow can read the item lines in a PDF or photo."],
-   "/manager/request-log": ["Request log", "The team's Quote Log and MDM Log, imported from Dataverse."],
-  "/qualifier/request-log": ["Request log", "The team's Quote Log and MDM Log, imported from Dataverse."],
-   "/margin/locked-prices": ["Locked prices", "Prices locked into customer accounts. Import CSV files and review margins."],
   "/margin/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
-  "/manager/teams-import": ["Import from Teams", "Bring new requests in from the Teams form's quote log."],
-"/qualifier/teams-import": ["Import from Teams", "Bring new requests in from the Teams form's quote log."],
   "/qualifier/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
-"/manager/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
-"/quoter/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
-"/reviser/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
-  "/manager/new-request": ["New request (intake)", "Enter a request from the Teams form on a rep's behalf."],
-"/qualifier/new-request": ["New request (intake)", "Enter a request from the Teams form on a rep's behalf."],
-  "/rep/home": ["Dashboard", "Your requests at a glance."],
-  "/rep/new-quote-request": ["New quote request", "Share the opportunity details so a Quoter can prepare a response."],
-  "/rep/my-requests": ["My requests", "Track quote requests submitted from your account."],
-  "/qualifier/home": ["Dashboard", "Your screening queue at a glance."],
-  "/qualifier/screening-queue": ["Screening queue", "Review new submissions."],
-  "/qualifier/quote-log": ["Quote log", "A read-only view of all submissions."],
-  "/manager/home": ["Dashboard", "Your team's day at a glance."],
-  "/manager/quote-log": ["Quote log", "A complete view of quote activity across the workspace."],
-  "/manager/assignments": ["Assignments", "Review work that is ready to assign or already assigned."],
-  "/manager/reports": ["Reports", "Pipeline, cycle time, and coaching reports."],
-  "/manager/templates": ["Templates", "Build and publish quote export templates."],
-  "/manager/coaching": ["Coaching", "Review and share coaching notes."],
-  "/manager/settings": ["Settings", "Manage users, roles, and access."],
-  "/quoter/home": ["Dashboard", "Your quote queue at a glance."],
-  "/quoter/my-quotes": ["My quotes", "Track the quotes assigned to your account."],
-  "/quoter/quote-workspace": ["Quote workspace", "Run extraction, manage files, and price the quote."],
-  "/reviser/home": ["Dashboard", "Your review queue at a glance."],
-  "/reviser/review-queue": ["Review queue", "Quotes waiting for your review."],
-  "/manager/approval-queue": ["Approval queue", "Quotes waiting for approval."],
-  "/reviser/approval-queue": ["Approval queue", "Quotes waiting for approval."],
+  "/manager/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
+  "/quoter/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
+  "/reviser/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
 };
 
 const statusTone = {
@@ -177,73 +184,8 @@ function renderBrandingPage(branding) {
   </section>`;
 }
 
-function quoteLogRow(quote) {
-  const isAsap = quote.priority === "ASAP";
-  const neededBy = quote.neededBy ? new Date(`${quote.neededBy}T00:00:00`).toLocaleDateString("en-US") : "";
-  return `<tr class="quote-log-row" data-quote-id="${escapeHtml(quote.databaseId)}" data-type="${escapeHtml(quote.quoteType)}" data-status="${escapeHtml(quote.status)}" data-priority="${escapeHtml(quote.priority)}" data-quoter="${escapeHtml(quote.assignedQuoterId || "")}" tabindex="0" role="button" aria-label="Open ${escapeHtml(quote.id)}">
-    <td><strong class="quote-id">${escapeHtml(quote.id)}</strong></td>
-    <td><span class="type-badge type-badge--${quote.quoteType === "MDM" ? "mdm" : "quote"}">${escapeHtml(quote.quoteType)}</span></td>
-    <td>${escapeHtml(quote.accountNumber || "—")}</td>
-    <td>${escapeHtml(quote.companyName || quote.accountName || "—")}</td>
-    <td>${escapeHtml(quote.rep || "—")}</td>
-    <td>${escapeHtml(quote.submitterRole || "—")}</td>
-    <td>${isAsap ? `<span class="status-pill status-pill--error">ASAP${neededBy ? ` · ${escapeHtml(neededBy)}` : ""}</span>` : '<span class="status-pill status-pill--info">Standard</span>'}</td>
-    <td>${statusPill(quote.status)}</td>
-    <td>${escapeHtml(quote.assignedToName || "Unassigned")}</td>
-    <td>${escapeHtml(quote.submitted)}</td>
-  </tr>`;
-}
 
-function renderQuoteLog(quotes, quoters) {
-  const statuses = [...new Set(quotes.map((quote) => quote.status))].sort();
-  const rows = quotes.map(quoteLogRow).join("");
-  return `<section class="items-section" aria-label="Quote log">
-    <div class="items-heading"><div><h2>Quote log</h2><p class="section-description" id="quote-log-count">${quotes.length} submissions</p></div><span class="item-count">LIVE DATA</span></div>
-    <div class="log-filters" role="group" aria-label="Filter quote log">
-      <label>Type <select id="filter-type"><option value="">All</option><option>Quote</option><option>MDM</option></select></label>
-      <label>Status <select id="filter-status"><option value="">All</option>${statuses.map((status) => `<option>${escapeHtml(status)}</option>`).join("")}</select></label>
-      <label>Priority <select id="filter-priority"><option value="">All</option><option>Standard</option><option>ASAP</option></select></label>
-      <label>Quoter <select id="filter-quoter"><option value="">All</option>${quoters.map((quoter) => `<option value="${escapeHtml(quoter.id)}">${escapeHtml(quoter.name)}</option>`).join("")}</select></label>
-    </div>
-    <div class="table-scroll"><table><caption class="visually-hidden">All quote submissions</caption>
-      <thead><tr><th scope="col">Number</th><th scope="col">Type</th><th scope="col">Account</th><th scope="col">Company</th><th scope="col">Rep</th><th scope="col">Submitter role</th><th scope="col">Priority</th><th scope="col">Status</th><th scope="col">Assigned quoter</th><th scope="col">Submitted</th></tr></thead>
-      <tbody id="quote-log-body">${rows}</tbody>
-    </table></div>
-    <div class="quote-detail-panel" id="quote-detail-panel" hidden></div>
-  </section>`;
-}
 
-function bindQuoteLogFilters() {
-  const filters = ["filter-type", "filter-status", "filter-priority", "filter-quoter"].map((id) => document.getElementById(id));
-  const body = document.getElementById("quote-log-body");
-  const count = document.getElementById("quote-log-count");
-  const panel = document.getElementById("quote-detail-panel");
-
-  function applyFilters() {
-    const [type, status, priority, quoter] = filters.map((filter) => filter.value);
-    let visible = 0;
-    for (const row of body.querySelectorAll(".quote-log-row")) {
-      const show = (!type || row.dataset.type === type)
-        && (!status || row.dataset.status === status)
-        && (!priority || row.dataset.priority === priority)
-        && (!quoter || row.dataset.quoter === quoter);
-      row.hidden = !show;
-      if (show) visible += 1;
-    }
-    count.textContent = `${visible} submission${visible === 1 ? "" : "s"}`;
-  }
-  for (const filter of filters) filter.addEventListener("change", applyFilters);
-
-  body.addEventListener("click", (event) => {
-    const row = event.target.closest(".quote-log-row");
-    if (row) openQuoteDetail(row.dataset.quoteId, panel);
-  });
-  body.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    const row = event.target.closest(".quote-log-row");
-    if (row) { event.preventDefault(); openQuoteDetail(row.dataset.quoteId, panel); }
-  });
-}
 
 async function openQuoteDetail(quoteId, panel) {
   panel.hidden = false;
@@ -490,6 +432,7 @@ function renderScreeningPanel(quote, settings) {
             <textarea id="screening-reason" name="reason" rows="3" aria-describedby="screening-reason-help"></textarea>
             <small id="screening-reason-help">Required for Request more info and Decline. The Rep is notified and the clock pauses for Needs info.</small>
           </div>
+          <div class="v2-screen-setup" id="v2-screen-setup"></div>
           <p class="screening-feedback" role="status" aria-live="polite"></p>
           <div class="review-actions"><button class="analyze-button" type="submit"><span>Submit outcome</span></button></div>
         </form>
@@ -507,6 +450,7 @@ async function openScreeningPanel(quoteId, panel, settings) {
     if (!response.ok) throw new Error(quote.error || "Could not load submission.");
     panel.innerHTML = renderScreeningPanel(quote, settings);
     bindScreeningForm(panel);
+    if (window.v2FillScreening) window.v2FillScreening(panel, quote.databaseId || quote.id);
     panel.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
     panel.innerHTML = `<p class="section-description is-error">${escapeHtml(error.message)}</p>`;
@@ -552,6 +496,8 @@ function bindScreeningForm(panel) {
     feedback.textContent = "Saving…";
     feedback.className = "screening-feedback";
     try {
+      // Template, specialty and rep department are saved first (required to approve).
+      if (window.v2SaveScreening) await window.v2SaveScreening(form.dataset.databaseId, status);
       const response = await fetch(`/api/quotes/${encodeURIComponent(form.dataset.databaseId)}/status`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -613,7 +559,7 @@ function renderReviserPanel(quote) {
     : '<p class="section-description">No source file attached.</p>';
 
   return `<div class="quote-detail reviser-panel" role="region" aria-label="Review workspace for ${escapeHtml(quote.quote_number)}">
-    <div class="items-heading"><div><h3>${escapeHtml(quote.quote_number)} <span class="type-badge type-badge--${quote.quoteType === "MDM" ? "mdm" : "quote"}">${escapeHtml(quote.quoteType)}</span></h3><p class="section-description">${statusPill(quote.status)} · ${escapeHtml(quote.company_name || quote.accountName || "")}</p></div><button class="secondary-button" type="button" data-close-panel>Close</button></div>
+    <div class="items-heading"><div><h3>${escapeHtml(quote.quote_number)} <span class="type-badge type-badge--${quote.quoteType === "MDM" ? "mdm" : "quote"}">${escapeHtml(quote.quoteType)}</span></h3><p class="section-description">${statusPill(quote.status)} · ${escapeHtml(quote.company_name || quote.accountName || "")}</p></div><span><a class="settings-save-button" href="/quoter/quote-workspace?id=${encodeURIComponent(quote.id)}" target="_blank" rel="noopener">Open in quote workspace ↗</a> <button class="secondary-button" type="button" data-close-panel>Close</button></span></div>
     <div class="reviser-split">
       <div class="reviser-source">
         <div class="reviser-file-tabs" role="tablist" aria-label="Source files">${fileTabs}</div>
@@ -772,97 +718,13 @@ function bindReviserPanel(panel, quote) {
   });
 }
 
-function renderSendToCustomerPanel(quote, user) {
-  const customerName = quote.company_name || quote.accountName || "Customer";
-  const exportUrl = `/api/quotes/${encodeURIComponent(quote.id)}/export/customer`;
-  const subject = `Your quote ${quote.quote_number} from QuoteFlow`;
-  const body = [
-    `Hello ${customerName},`,
-    "",
-    `Thank you for the opportunity. Please find your quote ${quote.quote_number} attached.`,
-    "",
-    "This quote is based on the details you shared. Let me know if you have any questions or would like to move forward.",
-    "",
-    "Best regards,",
-    user.name,
-    user.email,
-  ].join("\n");
-  return `<div class="quote-detail send-composer" role="region" aria-label="Send quote ${escapeHtml(quote.quote_number)} to customer">
-    <div class="items-heading"><div><h3>Send ${escapeHtml(quote.quote_number)} to customer</h3><p class="section-description">${escapeHtml(customerName)} · ${statusPill(quote.status)}</p></div><button class="secondary-button" type="button" data-close-panel>Close</button></div>
-    <form class="send-composer-form" data-database-id="${escapeHtml(quote.id)}">
-      <div class="send-composer-grid">
-        <div class="send-composer-field"><label for="send-to">To</label><input id="send-to" name="to" type="email" placeholder="customer@example.com" required /></div>
-        <div class="send-composer-field"><label for="send-cc">CC</label><input id="send-cc" name="cc" type="text" value="${escapeHtml(user.email)}" readonly aria-readonly="true" /><small class="field-hint">You are CC'd automatically.</small></div>
-        <div class="send-composer-field send-composer-field--wide"><label for="send-subject">Subject</label><input id="send-subject" name="subject" type="text" value="${escapeHtml(subject)}" required /></div>
-        <div class="send-composer-field send-composer-field--wide"><label for="send-body">Message</label><textarea id="send-body" name="body" rows="8" required>${escapeHtml(body)}</textarea></div>
-        <div class="send-composer-field send-composer-field--wide"><span class="send-attachment-label">Attachment</span><a class="file-chip" href="${exportUrl}" download aria-label="Download customer version of ${escapeHtml(quote.quote_number)}"><span class="file-chip-icon" aria-hidden="true">XLS</span><span class="file-chip-name">${escapeHtml(quote.quote_number)}-customer.xlsx</span></a><small class="field-hint">The customer version (no cost or margin) is attached.</small></div>
-      </div>
-      <p class="screening-feedback" role="status" aria-live="polite"></p>
-      <div class="review-actions">
-        <button class="secondary-button" type="button" data-close-panel>Cancel</button>
-        <button class="analyze-button" type="submit"><span>Send to customer</span></button>
-      </div>
-    </form>
-  </div>`;
-}
 
-async function openSendToCustomerPanel(quoteId, panel, user) {
-  panel.hidden = false;
-  panel.innerHTML = '<p class="section-description">Preparing composer…</p>';
-  try {
-    const response = await fetch(`/api/quotes/${encodeURIComponent(quoteId)}`);
-    const quote = await response.json();
-    if (!response.ok) throw new Error(quote.error || "Could not load quote.");
-    panel.innerHTML = renderSendToCustomerPanel(quote, user);
-    bindSendToCustomerPanel(panel);
-    panel.scrollIntoView({ behavior: "smooth", block: "start" });
-  } catch (error) {
-    panel.innerHTML = `<p class="section-description is-error">${escapeHtml(error.message)}</p>`;
-  }
-}
 
-function bindSendToCustomerPanel(panel) {
-  const form = panel.querySelector(".send-composer-form");
-  if (!form) return;
-  panel.querySelectorAll("[data-close-panel]").forEach((button) => button.addEventListener("click", () => { panel.hidden = true; }));
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const feedback = form.querySelector(".screening-feedback");
-    const button = form.querySelector("button[type='submit']");
-    button.disabled = true;
-    feedback.textContent = "Sending…";
-    feedback.className = "screening-feedback";
-    try {
-      // Generate the pre-written email in the default mail client (no real send yet).
-      const to = form.elements.to.value.trim();
-      const cc = form.elements.cc.value.trim();
-      const subject = form.elements.subject.value;
-      const body = form.elements.body.value;
-      const mailto = `mailto:${encodeURIComponent(to)}?cc=${encodeURIComponent(cc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      window.location.href = mailto;
-
-      const response = await fetch(`/api/quotes/${encodeURIComponent(form.dataset.databaseId)}/status`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "Sent to customer", reason: "Quote sent to customer by the Rep." }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Status could not be updated.");
-      feedback.textContent = "Email draft opened and quote marked Sent to customer.";
-      feedback.className = "screening-feedback is-success";
-      window.setTimeout(() => window.location.reload(), 900);
-    } catch (error) {
-      feedback.textContent = error.message;
-      feedback.className = "screening-feedback is-error";
-      button.disabled = false;
-    }
-  });
-}
 
 function renderPageContent(page, quotes, user, reports, quoters, branding, reassignments = []) {
   const [title, description] = pageCopy[page.href];
   const pageContent = document.querySelector("#page-content");
-  pageContent.innerHTML = `<section class="intro" aria-labelledby="page-title"><div><p class="eyebrow">${escapeHtml(user.role.toUpperCase())} WORKSPACE</p><h1 id="page-title">${escapeHtml(title)}</h1><p class="intro-copy">${escapeHtml(description)}</p></div><span class="page-index">${escapeHtml(user.role.toUpperCase())}</span></section><div id="page-body"></div><footer class="footer"><span>QUOTEFLOW DOCUMENT WORKSPACE</span><span>${escapeHtml(user.role.toUpperCase())} VIEW</span></footer>`;
+  pageContent.innerHTML = `<section class="v2-intro" aria-labelledby="page-title"><h1 id="page-title">${escapeHtml(title)} <span class="v2-info" tabindex="0" role="note" title="${escapeHtml(description)}" aria-label="${escapeHtml(description)}">ⓘ</span></h1></section><div id="page-body"></div>`;
   const pageBody = document.querySelector("#page-body");
   if (page.href === "/quoter/quote-workspace") {
     window.__workspaceQuotes = quotes;
@@ -963,21 +825,7 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
       </div>`;
     return;
   }
-    if (page.href.endsWith("/teams-import")) {
-    pageBody.innerHTML = `
-      <section class="request-section items-section" aria-labelledby="teams-import-title">
-        <div class="items-heading"><div><h2 class="section-title" id="teams-import-title">Upload the quote log</h2><p class="section-description">Choose the Excel file the Teams form fills. QuoteFlow shows what it found before anything is saved.</p></div></div>
-        <form class="teams-import-form" id="teams-import-form">
-          <label class="visually-hidden" for="teams-import-file">Quote log Excel file</label>
-          <input id="teams-import-file" type="file" accept=".xlsx,.xls" />
-          <button class="settings-save-button" id="teams-import-preview" type="submit">Preview import</button>
-          <p class="request-feedback" id="teams-import-status" role="status" aria-live="polite"></p>
-        </form>
-      </section>
-      <div id="teams-import-results"></div>`;
-    return;
-  }
-    if (page.href.endsWith("/my-settings")) {
+      if (page.href.endsWith("/my-settings")) {
     pageBody.innerHTML = `
       <form class="my-settings" id="my-settings-form">
         <section class="request-section items-section" aria-labelledby="brightness-title">
@@ -1001,22 +849,13 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
     return;
   }
 
-  if (page.href.endsWith("/new-request")) {
-    pageBody.append(document.querySelector("#rep-request-template").content.cloneNode(true));
-    return;
-  }
   if (page.href === "/manager/branding") {
     pageBody.innerHTML = renderBrandingPage(branding);
     return;
   }
-  if (page.href === "/quoter/quote-workspace") {
-    window.__workspaceQuotes = quotes;
-    pageBody.append(document.querySelector("#quote-workspace-template").content.cloneNode(true));
-    return;
-  }
-  if (page.href === "/manager/quote-log") {
-    pageBody.innerHTML = renderQuoteLog(quotes, quoters);
-    bindQuoteLogFilters(quotes);
+  // Pages drawn by v2-pages.js.
+  if (["/manager/assignments", "/quoter/my-quotes", "/quoter/completed"].includes(page.href)) {
+    pageBody.innerHTML = '<div id="v2-root"><p class="section-description">Loading…</p></div>';
     return;
   }
   if (page.href === "/manager/settings") {
@@ -1024,7 +863,6 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
     return;
   }
   const homePages = {
-    "/rep/home": "Rep",
     "/qualifier/home": "Qualifier",
     "/manager/home": "Manager",
     "/quoter/home": "Quoter",
@@ -1080,33 +918,6 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
     return;
   }
 
-  if (page.href === "/rep/my-requests") {
-    const rows = quotes.map((quote) => {
-      const sendButton = quote.status === "Approved"
-        ? `<button class="analyze-button send-to-customer-button" data-quote-id="${escapeHtml(quote.databaseId)}" type="button"><span>Send to customer</span></button>`
-        : "";
-      return `<tr>
-        <td><strong class="quote-id">${escapeHtml(quote.id)}</strong><small class="table-secondary">Updated ${escapeHtml(quote.updated)}</small></td>
-        <td>${escapeHtml(quote.supplier || "New request")}</td>
-        <td>${quote.priority === "ASAP" ? '<span class="status-pill status-pill--error">ASAP</span>' : "Standard"}</td>
-        <td>${statusPill(quote.status)}</td>
-        <td>${sendButton}</td>
-      </tr>`;
-    }).join("");
-    pageBody.innerHTML = `<section class="items-section" aria-label="My requests">
-      <div class="items-heading"><div><h2>My requests</h2><p class="section-description">${quotes.length} ${quotes.length === 1 ? "request" : "requests"}</p></div><span class="item-count">LIVE DATA</span></div>
-      <div class="table-scroll"><table><caption class="visually-hidden">My quote requests</caption>
-        <thead><tr><th scope="col">Quote</th><th scope="col">Company</th><th scope="col">Priority</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Action</span></th></tr></thead>
-        <tbody>${rows || '<tr><td colspan="5">No requests yet. Submit a new quote request to get started.</td></tr>'}</tbody>
-      </table></div>
-      <div class="quote-detail-panel" id="quote-detail-panel" hidden></div>
-    </section>`;
-    const panel = document.getElementById("quote-detail-panel");
-    pageBody.querySelectorAll(".send-to-customer-button").forEach((button) => {
-      button.addEventListener("click", () => openSendToCustomerPanel(button.dataset.quoteId, panel, user));
-    });
-    return;
-  }
 
   if (page.href === "/manager/reports") {
     pageBody.innerHTML = renderMetrics(quotes, reports) + renderWorkload(reports.workload || []);
@@ -1121,31 +932,21 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
   }
 }
 
+// One menu, grouped Work · Data · Admin, in process order. No role switcher:
+// the job title shows under the name, and each page opens with the right role.
 function renderNavigation(user, navigation, currentPath, branding) {
   const menu = document.querySelector("#sidebar-menu");
-  menu.innerHTML = `<p class="sidebar-label">WORKSPACE</p>${navigation.filter((item) => !item.hidden).map((item) => `<a class="sidebar-link${item.href === currentPath ? " is-active" : ""}" href="${item.href}"${item.href === currentPath ? ' aria-current="page"' : ""}><span class="nav-icon" aria-hidden="true">${iconMarkup[item.icon] || iconMarkup.list}</span><span>${escapeHtml(item.label)}</span></a>`).join("")}`;
+  const visible = navigation.filter((item) => !item.hidden);
+  const groups = ["Work", "Data", "Admin"].map((group) => [group, visible.filter((item) => (item.group || "Work") === group)]).filter(([, items]) => items.length);
+  menu.innerHTML = groups.map(([group, items]) => `<p class="sidebar-label">${escapeHtml(group.toUpperCase())}</p>${items.map((item) => `<a class="sidebar-link${item.href === currentPath ? " is-active" : ""}" href="${item.href}"${item.href === currentPath ? ' aria-current="page"' : ""}><span class="nav-icon" aria-hidden="true">${iconMarkup[item.icon] || iconMarkup.list}</span><span>${escapeHtml(item.label)}</span></a>`).join("")}`).join("");
   document.querySelector("#user-name").textContent = user.name;
-  const roleElement = document.querySelector("#user-role");
-  if (Array.isArray(user.roles) && user.roles.length > 1) {
-    roleElement.innerHTML = `<label class="visually-hidden" for="role-switcher">Active role</label><select id="role-switcher" class="role-switcher">${user.roles.map((role) => `<option value="${escapeHtml(role)}"${role === user.role ? " selected" : ""}>${escapeHtml(role)}</option>`).join("")}</select>`;
-    document.querySelector("#role-switcher").addEventListener("change", async (event) => {
-      const response = await fetch("/api/auth/switch-role", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: event.target.value }),
-      });
-      const payload = await response.json();
-      if (response.ok && payload.redirect) window.location.assign(payload.redirect);
-    });
-  } else {
-    roleElement.textContent = user.role;
-  }
+  document.querySelector("#user-role").textContent = user.title || user.role;
   document.querySelector("#user-email").textContent = user.email;
   document.querySelector("#user-avatar").textContent = user.name.split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase();
-    const settingsHref = navigation.find((item) => item.href.endsWith("/my-settings"))?.href || "#";
+  const settingsHref = navigation.find((item) => item.href.endsWith("/my-settings"))?.href || "#";
   document.querySelector("#user-avatar").href = settingsHref;
   document.querySelector("#user-name").href = settingsHref;
-  document.querySelector("#breadcrumb").innerHTML = `Documents <span aria-hidden="true">/</span> ${escapeHtml(pageCopy[currentPath][0])}`;
+  document.querySelector("#breadcrumb").innerHTML = `QuoteFlow <span aria-hidden="true">/</span> ${escapeHtml(pageCopy[currentPath][0])}`;
   const companyLogo = document.querySelector("#brand-logo");
   const hasCompanyLogo = branding.logoPath && !branding.logoPath.includes("quoteflow-logo.svg");
   companyLogo.hidden = !hasCompanyLogo;

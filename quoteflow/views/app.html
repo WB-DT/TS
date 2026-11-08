@@ -11,6 +11,7 @@
     <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" aria-label="QuoteFlow" />
     <link rel="stylesheet" href="/tokens.css" />
     <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/v2.css" />
   </head>
   <body class="auth-loading">
     <div class="app-shell">
@@ -32,110 +33,12 @@
       <div class="workspace">
         <header class="topbar">
           <p class="breadcrumb" id="breadcrumb">Workspace</p>
-          <span class="status-pill status-pill--info"><span class="status-dot"></span> Work account</span>
+          <div class="v2-topbar" id="v2-topbar"></div>
         </header>
         <main class="workspace-content" id="page-content" tabindex="-1" aria-live="polite"></main>
       </div>
     </div>
-    <template id="rep-request-template">
-      <form class="rep-request-form" id="rep-request-form" novalidate>
-        <section class="request-section items-section" aria-labelledby="rep-request-section-title">
-          <div class="items-heading"><div><h2 id="rep-request-section-title">1. Request</h2><p class="section-description">Who is requesting this quote and for which customer?</p></div><span class="step-label">SECTION 01</span></div>
-          <div class="request-fields-grid">
-            <div class="request-field"><div class="field-heading"><label for="requester-name">Your name</label><span data-field-help="requesterName"></span></div><input id="requester-name" type="text" readonly /></div>
-            <div class="request-field"><div class="field-heading"><label for="requester-email">Your email</label><span data-field-help="requesterEmail"></span></div><input id="requester-email" type="email" readonly /></div>
-            <div class="request-field"><div class="field-heading"><label for="submitter-role">Submitter role</label><span data-field-help="submitterRole"></span></div><select id="submitter-role" name="submitterRole" required><option value="">Choose your role</option><option>Retention</option><option>AM1</option><option>AM2</option><option>AM3</option><option>Hunter</option><option>Jackson office</option></select></div>
-            <div class="request-field"><div class="field-heading"><label for="request-type">Request type</label><span data-field-help="requestType"></span></div><select id="request-type" name="requestType" required><option value="">Choose request type</option><option>Existing customer</option><option>Lead</option><option>Win-back</option></select></div>
-            <div class="request-field"><div class="field-heading"><label for="quote-type">Team</label><span data-field-help="quoteType"></span></div><select id="quote-type" name="quoteType" required><option value="Quote">Quotes team</option><option value="MDM">MDM</option></select></div>
-            <div class="request-field" id="account-number-field" hidden><div class="field-heading"><label for="request-account-number">Customer number</label><span data-field-help="requestAccountNumber"></span></div><input id="request-account-number" name="accountNumber" type="text" list="account-options" autocomplete="off" pattern="C[0-9]+" maxlength="40" /><datalist id="account-options"></datalist></div>
-            <div class="request-field"><div class="field-heading"><label for="request-company-name">Company name</label><span data-field-help="requestCompanyName"></span></div><input id="request-company-name" name="companyName" type="text" maxlength="200" autocomplete="organization" required /></div>
-          </div>
-        </section>
-
-        <section class="request-section items-section" aria-labelledby="opportunity-section-title">
-          <div class="items-heading"><div><h2 id="opportunity-section-title">2. Opportunity</h2><p class="section-description">Describe the need and delivery destination.</p></div><span class="step-label">SECTION 02</span></div>
-          <div class="request-fields-grid">
-            <div class="request-field request-field--wide"><div class="field-heading"><label for="customer-needs">What the customer needs</label><span data-field-help="customerNeeds"></span></div><textarea id="customer-needs" name="customerNeeds" rows="4" required aria-describedby="customer-needs-help"></textarea><small id="customer-needs-help">Include product details, quantities, use case, and any requirements the Quoter should know.</small></div>
-            <div class="request-field"><div class="field-heading"><label for="ship-city">Ship-to city</label><span data-field-help="shipCity"></span></div><input id="ship-city" name="shipCity" type="text" maxlength="120" autocomplete="address-level2" /></div>
-            <div class="request-field"><div class="field-heading"><label for="ship-state">Ship-to state</label><span data-field-help="shipState"></span></div><input id="ship-state" name="shipState" type="text" maxlength="32" autocomplete="address-level1" /></div>
-            <div class="request-field"><div class="field-heading"><label for="ship-zip">Ship-to ZIP</label><span data-field-help="shipZip"></span></div><input id="ship-zip" name="shipZip" type="text" inputmode="numeric" autocomplete="postal-code" pattern="[0-9]{5}(-[0-9]{4})?" /></div>
-            <div class="request-field"><div class="field-heading"><label for="request-ppl">PPL</label><span data-field-help="pplId"></span></div><div class="request-inline"><select id="request-ppl" name="pplId"><option value="">Choose PPL</option></select><button class="secondary-button" id="create-ppl-toggle" type="button">Create new PPL</button></div></div>
-            <div class="request-field request-field--wide" id="create-ppl-panel" hidden><div class="field-heading"><label for="new-ppl-name">New PPL name</label></div><div class="request-inline"><input id="new-ppl-name" type="text" maxlength="160" /><button class="secondary-button" id="create-ppl-save" type="button">Save PPL</button></div><p class="request-feedback" id="ppl-feedback" role="status" aria-live="polite"></p></div>
-          </div>
-        </section>
-
-        <section class="request-section items-section" aria-labelledby="priority-section-title">
-          <div class="items-heading"><div><h2 id="priority-section-title">3. Priority</h2><p class="section-description">Choose standard lead time or request an expedited quote.</p></div><span class="step-label">SECTION 03</span></div>
-          <div class="priority-options" role="radiogroup" aria-labelledby="priority-section-title">
-            <label class="priority-option"><input type="radio" name="priority" value="Standard" checked /><span><strong>Standard</strong><small id="standard-lead-time">Uses the configured lead time.</small></span></label>
-            <label class="priority-option"><input type="radio" name="priority" value="ASAP" /><span><strong>ASAP</strong><small>Requires a future date and sales manager approval.</small></span></label>
-          </div>
-          <div class="request-fields-grid asap-fields" id="asap-fields" hidden>
-            <div class="request-field"><div class="field-heading"><label for="needed-by">Needed-by date</label><span data-field-help="neededBy"></span></div><input id="needed-by" name="neededBy" type="date" /></div>
-            <div class="request-field"><div class="field-heading"><label for="asap-reason">ASAP reason</label><span data-field-help="asapReason"></span></div><select id="asap-reason" name="asapReason"><option value="">Choose a reason</option><option>Customer deadline or bid due</option><option>Competitor quote expiring</option><option>At-risk account</option><option>Large order opportunity</option><option>Other</option></select></div>
-            <div class="request-field request-field--wide"><div class="field-heading"><label for="asap-items">Which items are ASAP?</label><span data-field-help="asapItems"></span></div><textarea id="asap-items" name="asapItems" rows="2"></textarea></div>
-            <div class="request-field"><div class="field-heading"><label for="asap-manager">Approving sales manager</label><span data-field-help="asapApprovedBy"></span></div><select id="asap-manager" name="asapApprovedBy"><option value="">Choose your manager</option></select></div>
-            <div class="request-field request-field--wide"><div class="field-heading"><label for="request-notes">Notes</label><span data-field-help="notes"></span></div><textarea id="request-notes" name="notes" rows="3"></textarea><small id="notes-help">Required when the ASAP reason is Other.</small></div>
-          </div>
-        </section>
-
-        <section class="request-section items-section" aria-labelledby="files-section-title">
-          <div class="items-heading"><div><h2 id="files-section-title">4. Files</h2><p class="section-description">Attach supporting customer files.</p></div><span class="step-label">SECTION 04</span></div>
-          <label class="request-file-drop" id="request-file-drop" for="request-files"><span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14.5v3A2.5 2.5 0 0 0 7.5 20h9a2.5 2.5 0 0 0 2.5-2.5v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span id="request-file-label">Drop files here or <span>browse</span></span><small>PDF, images, Excel, Word · Up to 10 files, 20 MB each</small><input id="request-files" name="files" type="file" multiple accept="application/pdf,image/*,.xls,.xlsx,.doc,.docx" required /></label>
-          <ul class="request-file-list" id="request-file-list" aria-label="Selected files"></ul>
-          <span data-field-help="requestFiles"></span>
-        </section>
-
-        <div class="request-actions"><p class="request-feedback" id="request-feedback" role="status" aria-live="polite"></p><button class="analyze-button" id="review-request-button" type="button"><span>Review request</span></button></div>
-        <section class="request-review items-section" id="request-review" aria-labelledby="request-review-title" hidden><div class="items-heading"><div><h2 id="request-review-title">5. Review your request</h2><p class="section-description">Confirm these details before submitting.</p></div><span class="step-label">SECTION 05</span></div><dl class="request-summary" id="request-summary"></dl><div class="review-actions"><button class="secondary-button" id="edit-request-button" type="button">Back to edit</button><button class="analyze-button submit-review-button" id="submit-quote-request" type="button"><span>Submit request</span></button></div></section>
-      </form>
-    </template>
-    <template id="quote-workspace-template">
-      <div class="quote-workspace" id="quote-workspace-root">
-        <section class="items-section" aria-labelledby="qw-select-title">
-          <div class="items-heading"><div><h2 id="qw-select-title">Quote workspace</h2><p class="section-description">Choose an assigned quote to work on.</p></div></div>
-          <div class="log-filters"><label for="qw-quote-select">Quote <select id="qw-quote-select"><option value="">Choose a quote</option></select></label></div>
-        </section>
-        <div id="qw-body" hidden>
-          <section class="items-section" aria-labelledby="qw-submission-title">
-            <div class="items-heading"><div><h2 id="qw-submission-title">Submission</h2><p class="section-description" id="qw-submission-meta"></p></div><span class="item-count" id="qw-quote-number"></span></div>
-            <dl class="detail-grid" id="qw-submission-fields"></dl>
-          </section>
-          <section class="items-section" aria-labelledby="qw-files-title">
-            <div class="items-heading"><div><h2 id="qw-files-title">Files</h2><p class="section-description">Attached source documents</p></div>
-              <div class="qw-file-actions">
-                <button class="secondary-button" id="qw-manage-files" type="button" aria-expanded="false" aria-controls="qw-manage-menu">Manage files</button>
-                <button class="analyze-button" id="qw-run-extraction" type="button"><span>Run extraction</span></button>
-              </div>
-            </div>
-            <div class="qw-manage-menu" id="qw-manage-menu" hidden></div>
-            <p class="message" id="qw-files-message" role="alert"></p>
-            <div class="file-chip-list" id="qw-file-list"></div>
-            <p class="message" id="qw-extract-message" role="status" aria-live="polite"></p>
-          </section>
-          <section class="items-section" aria-labelledby="qw-pricing-title">
-            <div class="items-heading"><div><h2 id="qw-pricing-title">Pricing reports</h2><p class="section-description">Upload the Current Price Tool and Costing Tool exports.</p></div></div>
-            <div class="qw-report-slots">
-              <div class="qw-report-slot" data-report-type="account"><label>Account price report</label><input type="file" accept=".xlsx,.csv" aria-label="Account price report" /><span class="qw-report-status" role="status"></span></div>
-              <div class="qw-report-slot" data-report-type="house"><label>House account price report</label><input type="file" accept=".xlsx,.csv" aria-label="House account price report" /><span class="qw-report-status" role="status"></span></div>
-              <div class="qw-report-slot" data-report-type="costing"><label>Costing report</label><input type="file" accept=".xlsx,.csv" aria-label="Costing report" /><span class="qw-report-status" role="status"></span></div>
-            </div>
-            <div class="review-actions"><button class="analyze-button" id="qw-compute-pricing" type="button"><span>Compute pricing</span></button><p class="message" id="qw-pricing-message" role="status" aria-live="polite"></p></div>
-            <div class="review-actions qw-export-actions">
-              <a class="secondary-button" id="qw-export-internal" href="#" download>Internal Excel</a>
-              <a class="secondary-button" id="qw-export-customer" href="#" download>Customer Excel</a>
-            </div>
-          </section>
-          <section class="items-section" aria-labelledby="qw-lines-title" id="qw-lines-section" hidden>
-            <div class="items-heading"><div><h2 id="qw-lines-title">Line pricing</h2><p class="section-description" id="qw-lines-count"></p></div></div>
-            <div class="table-scroll"><table><caption class="visually-hidden">Line pricing</caption><thead id="qw-lines-head"></thead><tbody id="qw-lines-body"></tbody></table></div>
-          </section>
-        </div>
-      </div>
-    </template>
     <script src="/workspace.js" defer></script>
-    <script src="/quote-workspace.js" defer></script>
-    <script src="/rep-request.js" defer></script>
     <script src="/users.js" defer></script>
     <script src="/menu-toggle.js" defer></script>
     <script src="/quote-stages-page.js" defer></script>
@@ -144,6 +47,6 @@
     <script src="/request-log-page.js" defer></script>
     <script src="/locked-prices-page.js" defer></script>
     <script src="/my-settings.js" defer></script>
-    <script src="/teams-import-page.js" defer></script>
+    <script src="/v2-pages.js" defer></script>
   </body>
 </html>
