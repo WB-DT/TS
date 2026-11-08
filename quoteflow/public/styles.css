@@ -632,6 +632,7 @@ a.user-avatar:focus-visible, .user-name-link:focus-visible { outline: 2px solid 
 .ocr-raw pre { max-height: 360px; margin: 12px 0 0; overflow: auto; color: var(--text-muted); font-size: calc(11px * var(--text-scale)); white-space: pre-wrap; }
 .ocr-table th:first-child, .ocr-table td:first-child { width: 36px; }
 .ocr-table td:nth-child(3) { min-width: 220px; }
+
 /* Cross-reference (Margin Manager) */
 .xr-new { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 16px 18px; }
 .xr-new input { flex: 1; min-width: 220px; min-height: 34px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface); color: var(--text); font: inherit; font-size: calc(11px * var(--text-scale)); }
@@ -756,3 +757,4 @@ html[data-theme="dark"] .qs-table tr[class*="t-"] td, html[data-theme="dark"] .q
 .qs-table { width: 100%; }
 .qs-table th:first-child, .qs-table td:first-child { width: 34px; white-space: nowrap; }
 .qs-table th:nth-child(3), .qs-table td:nth-child(3) { min-width: 220px; }
+

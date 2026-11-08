@@ -1,0 +1,2 @@
+   Avoid having to NPM start manually 
+   {"postAttachCommand": "cd quoteflow && npm start"}
