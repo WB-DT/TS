@@ -17,6 +17,14 @@ const iconMarkup = {
 };
 
 const pageCopy = {
+   "/margin/cross-reference": ["Cross-reference", "Upload the files one at a time; every line is calculated like the Cross Reference Tool."],
+  "/manager/cross-reference": ["Cross-reference", "Upload the files one at a time; every line is calculated like the Cross Reference Tool."],
+  "/manager/read-document": ["Read a document", "Proof that QuoteFlow can read the item lines in a PDF or photo."],
+  "/quoter/read-document": ["Read a document", "Proof that QuoteFlow can read the item lines in a PDF or photo."],
+   "/manager/request-log": ["Request log", "The team's Quote Log and MDM Log, imported from Dataverse."],
+  "/qualifier/request-log": ["Request log", "The team's Quote Log and MDM Log, imported from Dataverse."],
+   "/margin/locked-prices": ["Locked prices", "Prices locked into customer accounts. Import CSV files and review margins."],
+  "/margin/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
   "/manager/teams-import": ["Import from Teams", "Bring new requests in from the Teams form's quote log."],
 "/qualifier/teams-import": ["Import from Teams", "Bring new requests in from the Teams form's quote log."],
   "/qualifier/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
@@ -856,6 +864,105 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
   const pageContent = document.querySelector("#page-content");
   pageContent.innerHTML = `<section class="intro" aria-labelledby="page-title"><div><p class="eyebrow">${escapeHtml(user.role.toUpperCase())} WORKSPACE</p><h1 id="page-title">${escapeHtml(title)}</h1><p class="intro-copy">${escapeHtml(description)}</p></div><span class="page-index">${escapeHtml(user.role.toUpperCase())}</span></section><div id="page-body"></div><footer class="footer"><span>QUOTEFLOW DOCUMENT WORKSPACE</span><span>${escapeHtml(user.role.toUpperCase())} VIEW</span></footer>`;
   const pageBody = document.querySelector("#page-body");
+  if (page.href === "/quoter/quote-workspace") {
+    window.__workspaceQuotes = quotes;
+    pageBody.innerHTML = `
+      <div id="qs-root">
+        <div class="qs-pick"><label for="qs-picker">Quote</label><select id="qs-picker"></select></div>
+        <div id="qs-view"></div>
+      </div>`;
+    return;
+  }
+
+ if (page.href.endsWith("/cross-reference")) {
+    pageBody.innerHTML = `
+      <div id="xref-root">
+        <section class="request-section items-section" aria-labelledby="xref-runs-title">
+          <div class="items-heading"><div><h2 class="section-title" id="xref-runs-title">Runs</h2><p class="section-description">Each run prices one list of items, such as an account or a quote. Its files are kept with it.</p></div></div>
+          <form class="xr-new" id="xref-new">
+            <label class="visually-hidden" for="xref-new-name">Run name</label>
+            <input id="xref-new-name" name="name" maxlength="160" placeholder="Name, for example C1234566 or Q-34721" />
+            <button class="settings-save-button" type="submit">Start a run</button>
+            <p class="request-feedback" id="xref-new-status" role="status" aria-live="polite"></p>
+          </form>
+          <div id="xref-runs"></div>
+        </section>
+        <section class="xr-detail" id="xref-detail" aria-live="polite" hidden></section>
+      </div>`;
+    return;
+  }
+
+  if (page.href.endsWith("/read-document")) {
+    pageBody.innerHTML = `
+      <div id="ocr-root">
+        <section class="request-section items-section" aria-labelledby="ocr-title">
+          <div class="items-heading"><div><h2 class="section-title" id="ocr-title">Read a PDF or photo</h2><p class="section-description">Upload an invoice, quote or price list. QuoteFlow finds the item lines: item number, description, quantity, unit and price. The file is read inside QuoteFlow and is not saved.</p></div></div>
+          <div class="ocr-upload-row">
+            <label class="visually-hidden" for="ocr-file">Document (PDF, PNG, JPG, TIFF, BMP or WebP)</label>
+            <input id="ocr-file" type="file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp" />
+            <button class="settings-save-button" id="ocr-read" type="button">Read document</button>
+            <p class="request-feedback" id="ocr-status" role="status" aria-live="polite"></p>
+          </div>
+        </section>
+        <div id="ocr-results" aria-live="polite"></div>
+      </div>`;
+    return;
+  }
+
+   if (page.href.endsWith("/request-log")) {
+    pageBody.innerHTML = `
+      <div id="request-log-root">
+        <section class="request-section items-section" aria-labelledby="rl-import-title">
+          <div class="items-heading"><div><h2 class="section-title" id="rl-import-title">Import the Dataverse export</h2><p class="section-description">Upload the .xlsx export of the Quote Log, the MDM Log, or both. New rows are added and changed rows are updated. Nothing is ever deleted.</p></div></div>
+          <div class="rl-import-row">
+            <label class="visually-hidden" for="rl-file">Dataverse export (.xlsx)</label>
+            <input id="rl-file" type="file" accept=".xlsx" />
+            <button class="settings-save-button" id="rl-import" type="button">Import</button>
+            <p class="request-feedback" id="rl-import-status" role="status" aria-live="polite"></p>
+          </div>
+        </section>
+        <div class="rl-tabs" role="tablist" aria-label="Log">
+          <button type="button" role="tab" aria-selected="true" data-log-tab="quote">Quote Log</button>
+          <button type="button" role="tab" aria-selected="false" data-log-tab="mdm">MDM Log</button>
+        </div>
+        <div class="rl-cards" id="rl-cards" role="group" aria-label="Rows by stage"></div>
+        <form class="rl-search" id="rl-search" role="search">
+          <label class="visually-hidden" for="rl-search-box">Search the log</label>
+          <input id="rl-search-box" name="search" type="search" placeholder="Search Q-number, company, account, person or PPL" />
+          <button class="secondary-button" type="submit">Search</button>
+        </form>
+        <div id="rl-list"></div>
+        <section class="rl-detail" id="rl-detail" aria-live="polite" hidden></section>
+      </div>`;
+    return;
+  }
+
+  if (page.href === "/margin/locked-prices") {
+    pageBody.innerHTML = `
+      <div id="locked-prices-root">
+        <section class="request-section items-section" aria-labelledby="lp-import-title">
+          <div class="items-heading"><div><h2 class="section-title" id="lp-import-title">Import a CSV file</h2><p class="section-description">Preview first. Rows already saved are skipped, so the same file can be uploaded twice safely.</p></div></div>
+          <div class="lp-import-row">
+            <label class="visually-hidden" for="lp-file">Locked prices CSV file</label>
+            <input id="lp-file" type="file" accept=".csv" />
+            <button class="secondary-button" id="lp-preview" type="button">Preview</button>
+            <button class="settings-save-button" id="lp-import" type="button" hidden>Save prices</button>
+            <p class="request-feedback" id="lp-import-status" role="status" aria-live="polite"></p>
+          </div>
+          <div id="lp-preview-area"></div>
+        </section>
+        <div class="lp-cards" id="lp-totals" role="group" aria-label="Locked-in price totals"></div>
+        <form class="lp-filters" id="lp-filters" role="search">
+          <label>Search<input name="search" type="search" placeholder="Account, company, item, PPL or Q-number" /></label>
+          <label>From<input name="from" type="date" /></label>
+          <label>To<input name="to" type="date" /></label>
+          <label class="lp-check"><input name="belowFloor" type="checkbox" /> Below margin floor only</label>
+          <button class="secondary-button" type="submit">Apply</button>
+        </form>
+        <div id="lp-list"></div>
+      </div>`;
+    return;
+  }
     if (page.href.endsWith("/teams-import")) {
     pageBody.innerHTML = `
       <section class="request-section items-section" aria-labelledby="teams-import-title">
