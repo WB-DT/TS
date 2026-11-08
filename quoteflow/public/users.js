@@ -214,8 +214,8 @@ function initializeUsersPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || "Roles could not be saved.");
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Roles could not be saved.");
         await loadUsers();
         const freshFeedback = detailPanel.querySelector(".user-roles-form .screening-feedback");
         if (freshFeedback) {
