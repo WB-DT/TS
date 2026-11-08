@@ -285,7 +285,7 @@ function initializeQuoteStages() {
           <label>Description<input name="description" value="${val([state.quote.accountNumber, state.quote.accountName].filter(Boolean).join(" - "))}"/></label>
           <div class="qs-two"><label>Start date<input name="startDate" type="date" required value="${new Date().toISOString().slice(0, 10)}"/></label><label>End date<input name="endDate" type="date" required/></label></div>
           <div class="qs-two"><label>Contract type<input name="contractType" required value="MASTER PPL"/></label><label>Classification<input name="classification" required value="M"/></label></div>
-          <label>Contract owner<input name="contractOwner" value="Contract owner"/></label>
+          <label>Contract owner<input name="contractOwner" required value=""/></label>
           <p class="request-feedback" id="qs-lf-status" role="status"></p>
           <div class="qs-actions"><button type="submit" class="settings-save-button" value="create">Create load form</button><button type="button" class="secondary-button" id="qs-lf-cancel">Cancel</button></div>
         </form>
