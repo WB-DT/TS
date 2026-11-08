@@ -41,9 +41,6 @@ function initializeRequestLog() {
 
   const state = { log: "quote", stage: "", search: "", page: 0 };
   const tabs = root.querySelectorAll("[data-log-tab]");
-  const fileInput = document.querySelector("#rl-file");
-  const importButton = document.querySelector("#rl-import");
-  const importStatus = document.querySelector("#rl-import-status");
   const cards = document.querySelector("#rl-cards");
   const searchForm = document.querySelector("#rl-search");
   const list = document.querySelector("#rl-list");
@@ -189,37 +186,6 @@ function initializeRequestLog() {
   });
   detail.addEventListener("click", (event) => {
     if (event.target.id === "rl-close") detail.hidden = true;
-  });
-
-  fileInput.addEventListener("change", () => {
-    importStatus.className = "request-feedback";
-    importStatus.textContent = fileInput.files[0] ? `Selected: ${fileInput.files[0].name}` : "";
-  });
-  importButton.addEventListener("click", async () => {
-    if (!fileInput.files[0]) {
-      importStatus.className = "request-feedback is-error";
-      importStatus.textContent = "Choose the .xlsx export first.";
-      return;
-    }
-    importButton.disabled = true;
-    importStatus.className = "request-feedback";
-    importStatus.textContent = "Importing… large logs can take a minute.";
-    try {
-      const body = new FormData();
-      body.append("file", fileInput.files[0]);
-      const response = await fetch("/api/request-log/import", { method: "POST", body });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || "The import didn't work.");
-      importStatus.className = "request-feedback is-success";
-      importStatus.innerHTML = payload.summary.map((item) => `<strong>${escapeHtml(item.log)}</strong>: ${item.added} added, ${item.updated} updated, ${item.unchanged} unchanged${item.skipped ? `, ${item.skipped} skipped (no ID)` : ""}${item.missingColumns.length ? `. Not in this file: ${escapeHtml(item.missingColumns.join(", "))}` : ""}.`).join("<br>");
-      fileInput.value = "";
-      loadList();
-    } catch (error) {
-      importStatus.className = "request-feedback is-error";
-      importStatus.textContent = error.message;
-    } finally {
-      importButton.disabled = false;
-    }
   });
 
   loadList();

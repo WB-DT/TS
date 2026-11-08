@@ -25,41 +25,26 @@ function registerDemoPassword(email, password = "demo") {
 const navigation = {
   Qualifier: [
     { label: "Dashboard", href: "/qualifier/home", icon: "dashboard" },
-    { label: "New request (intake)", href: "/qualifier/new-request", icon: "quotes" },
     { label: "Screening queue", href: "/qualifier/screening-queue", icon: "screening" },
-    { label: "Request log", href: "/qualifier/request-log", icon: "list" },
-    { label: "Import from Teams", href: "/qualifier/teams-import", icon: "upload" },
-    { label: "Quote log", href: "/qualifier/quote-log", icon: "list" },
+    { label: "Quote Log", href: "/qualifier/request-log", icon: "list" },
     { label: "My settings", href: "/qualifier/my-settings", icon: "settings", hidden: true },
   ],
   Manager: [
     { label: "Dashboard", href: "/manager/home", icon: "dashboard" },
-    { label: "New request (intake)", href: "/manager/new-request", icon: "quotes" },
-    { label: "Quote log", href: "/manager/quote-log", icon: "list" },
-    { label: "Request log", href: "/manager/request-log", icon: "list" },
-    { label: "Cross-reference", href: "/manager/cross-reference", icon: "templates" },
-    { label: "Read a document", href: "/manager/read-document", icon: "upload" },
-
-    { label: "Import from Teams", href: "/manager/teams-import", icon: "upload" },
+    { label: "Quote Log", href: "/manager/request-log", icon: "list" },
     { label: "Assignments", href: "/manager/assignments", icon: "assign" },
     { label: "Approval queue", href: "/manager/approval-queue", icon: "review" },
     { label: "Reports", href: "/manager/reports", icon: "metrics" },
-    { label: "Templates", href: "/manager/templates", icon: "templates" },
-    { label: "Coaching", href: "/manager/coaching", icon: "coaching" },
     { label: "Settings", href: "/manager/settings", icon: "settings" },
     { label: "My settings", href: "/manager/my-settings", icon: "settings", hidden: true },
   ],
   "Margin Manager": [
     { label: "Locked prices", href: "/margin/locked-prices", icon: "metrics" },
-    { label: "Cross-reference", href: "/margin/cross-reference", icon: "templates" },
     { label: "My settings", href: "/margin/my-settings", icon: "settings", hidden: true },
   ],
   Quoter: [
     { label: "Dashboard", href: "/quoter/home", icon: "dashboard" },
     { label: "My quotes", href: "/quoter/my-quotes", icon: "quotes" },
-    { label: "Read a document", href: "/quoter/read-document", icon: "upload" },
-
-    { label: "Quote workspace", href: "/quoter/quote-workspace", icon: "workspace" },
     { label: "My settings", href: "/quoter/my-settings", icon: "settings", hidden: true },
   ],
   Reviser: [

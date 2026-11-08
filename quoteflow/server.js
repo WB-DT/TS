@@ -351,55 +351,6 @@ function applyStage(query, logKey, stage) {
   return query;
 }
 
-// Import: adds new rows and updates rows that changed since the last import. Never deletes.
-app.post("/api/request-log/import", requestLogAccess, logUpload.single("file"), async (request, response) => {
-  if (!request.file) {
-    response.status(400).json({ error: "Choose the .xlsx export." });
-    return;
-  }
-  let results;
-  try {
-    results = dataverseLogs.parseDataverseExport(request.file.buffer);
-  } catch (error) {
-    response.status(400).json({ error: error.status ? error.message : "That file could not be read. Make sure it is the .xlsx export." });
-    return;
-  }
-  const now = Math.floor(Date.now() / 1000);
-  const summary = [];
-  for (const result of results) {
-    const log = dataverseLogs.LOGS[result.logKey];
-    const existing = new Map(
-      (await database.connection(log.table).select(log.idColumn, "qf_row_hash")).map((row) => [row[log.idColumn], row.qf_row_hash]),
-    );
-    const toInsert = [];
-    const toUpdate = [];
-    for (const record of result.records) {
-      const savedHash = existing.get(record[log.idColumn]);
-      if (savedHash === undefined) toInsert.push({ ...record, qf_imported_at: now });
-      else if (savedHash !== record.qf_row_hash) toUpdate.push({ ...record, qf_imported_at: now });
-    }
-    await database.connection.transaction(async (trx) => {
-      for (let start = 0; start < toInsert.length; start += 25) {
-        await trx(log.table).insert(toInsert.slice(start, start + 25));
-      }
-      for (const record of toUpdate) {
-        const { [log.idColumn]: id, ...changes } = record;
-        await trx(log.table).where(log.idColumn, id).update(changes);
-      }
-    });
-    summary.push({
-      log: log.label,
-      sheet: result.sheetName,
-      added: toInsert.length,
-      updated: toUpdate.length,
-      unchanged: result.records.length - toInsert.length - toUpdate.length,
-      skipped: result.skipped,
-      missingColumns: result.missingColumns,
-    });
-  }
-  response.json({ summary });
-});
-
 // List: one page of a log, newest first, with search and stage filters.
 app.get("/api/request-log/:log", requestLogAccess, async (request, response) => {
   const logKey = request.params.log;
