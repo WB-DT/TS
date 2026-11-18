@@ -36,6 +36,7 @@ const navigation = {
     { label: "Approval queue", href: "/manager/approval-queue", icon: "review" },
     { label: "Reports", href: "/manager/reports", icon: "metrics" },
     { label: "Settings", href: "/manager/settings", icon: "settings" },
+    { label: "Branding", href: "/manager/branding", icon: "settings" },
     { label: "My settings", href: "/manager/my-settings", icon: "settings", hidden: true },
   ],
   "Margin Manager": [
@@ -45,6 +46,7 @@ const navigation = {
   Quoter: [
     { label: "Dashboard", href: "/quoter/home", icon: "dashboard" },
     { label: "My quotes", href: "/quoter/my-quotes", icon: "quotes" },
+    { label: "Quote workspace", href: "/quoter/quote-workspace", icon: "quotes", hidden: true },
     { label: "My settings", href: "/quoter/my-settings", icon: "settings", hidden: true },
   ],
   Reviser: [
