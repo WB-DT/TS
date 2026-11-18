@@ -59,26 +59,41 @@ function computeQuote(lines, pricingFiles, costColumn) {
   const engine = xref.crossReference(files, { costColumn: costColumn ?? xref.DEFAULT_COSTING_COST_COLUMN });
   const byLineId = new Map(priced.map((line, index) => [line.id, engine.lines[index]]));
 
-  let sellTotal = 0; let costTotal = 0; let savingsTotal = 0;
+  let sellTotal = 0; let costTotal = 0; let savingsTotal = 0; let competitorTotal = 0; let ourTotal = 0;
   const out = lines.map((line) => {
     const x = byLineId.get(line.id) || null;
     const qty = num(line.qty);
     const units = qty ?? 1;
-    const sell = num(line.sell_price);
+    // Price states: CTLGPKE prices are locked to the account price, PPL prices are a warning, the rest are open.
+    const priceState = x && /CTLGPKE/i.test(x.pricingMethod || "") ? "locked" : x && /PPL/i.test(x.pricingMethod || "") ? "ppl" : "open";
+    // R-02: the account's current price pre-fills the sell price when the quoter hasn't entered one.
+    const accountPrice = x ? num(x.price) : null;
+    const prefilled = num(line.sell_price) === null && accountPrice !== null;
+    const sell = prefilled ? accountPrice : num(line.sell_price);
     const cost = x ? x.financialCost : null;
     const theirPrice = num(line.their_price);
     const target = num(line.target_margin);
     const margin = sell && cost !== null ? (sell - cost) / sell : null;
     const tags = tagsOf(line);
+    const alternative = tags.includes("Suggested alternative");
     const auto = [];
     if (x?.reviewNeeded === "Yes") auto.push("Deviation");
     if (x && PACK_SHIP_CATEGORY.test(x.category || "")) auto.push("Pack Ship");
     if (qty !== null && qty >= LARGE_OPPORTUNITY_QTY && LARGE_OPPORTUNITY_CATEGORY.test(x?.category || "")) auto.push("Large opportunity");
-    if (sell !== null && cost !== null) { sellTotal += sell * units; costTotal += cost * units; }
+    // Suggested alternatives are options for the customer, so they stay out of every total.
+    if (!alternative && sell !== null && cost !== null) { sellTotal += sell * units; costTotal += cost * units; }
     const blind = tags.includes("Blind");
-    if (sell !== null && theirPrice !== null && !blind) savingsTotal += (theirPrice - sell) * units;
+    if (!alternative && sell !== null && theirPrice !== null && !blind) {
+      savingsTotal += (theirPrice - sell) * units; competitorTotal += theirPrice * units; ourTotal += sell * units;
+    }
     return {
       ...line,
+      sell_price: sell,
+      prefilled,
+      priceState,
+      theirExtended: theirPrice !== null && qty !== null ? theirPrice * qty : null,
+      ourExtended: sell !== null && qty !== null ? sell * qty : null,
+      extendedCost: cost !== null && qty !== null ? cost * qty : null,
       tags,
       autoTags: auto,
       calc: x ? {
@@ -104,6 +119,8 @@ function computeQuote(lines, pricingFiles, costColumn) {
       sellTotal, costTotal, gp: sellTotal - costTotal,
       margin: sellTotal ? (sellTotal - costTotal) / sellTotal : null,
       savingsTotal,
+      competitorTotal, ourTotal,
+      savingsPct: competitorTotal ? savingsTotal / competitorTotal : null,
       negative: out.filter((l) => l.margin !== null && l.margin < 0).length,
       lookAt: out.filter((l) => l.tags.includes("Look at this")).length,
       naCount,
@@ -178,6 +195,8 @@ function register(app, { auth, database, multer, requestUpload, writeQuoteFile, 
       .select("id", "file_name as fileName", "file_type as fileType", "uploaded_at as uploadedAt", "archived_at as archivedAt");
     const lines = await knex("qs_lines").where({ quote_id: quoteId }).orderBy("position");
     const pricing = await loadPricingFiles(quoteId);
+    const request = await knex("quotes").where({ id: quoteId }).first();
+    const settings = await database.settings.get().catch(() => null);
     const computed = computeQuote(lines, pricing.files, state.cost_column);
 
     // Remembered matches for lines that don't have our item yet.
@@ -195,11 +214,16 @@ function register(app, { auth, database, multer, requestUpload, writeQuoteFile, 
       quote: {
         id: detail.id, number: detail.quote_number, status: detail.status, type: detail.quoteType, template: detail.template,
         accountNumber: detail.accountNumber, accountName: detail.accountName, ppl: detail.pplName, assignedTo: detail.assignedToName,
+        priority: request?.priority || "Standard", neededBy: request?.needed_by || null, submittedAt: request?.created_at || null,
+        requestType: request?.request_type || null, customerNeeds: request?.customer_needs || null, notes: request?.notes || null,
+        shipTo: [request?.ship_city, request?.ship_state, request?.ship_zip].filter(Boolean).join(", "),
+        leadTimeDays: Number(settings?.standard_lead_time_days) || null,
       },
       stage: state.stage,
       costColumn: state.cost_column === null ? xref.DEFAULT_COSTING_COST_COLUMN : state.cost_column,
       costingHeaders: pricing.files.costing ? pricing.files.costing.headers : [],
       pricingFiles: pricing.info,
+      customerFileUrl: `/api/qs/${encodeURIComponent(quoteId)}/customer-file`,
       files: files.map((f) => ({ ...f, url: `/api/quotes/${encodeURIComponent(quoteId)}/files/${encodeURIComponent(f.id)}` })),
       ...computed,
       options: { tags: MANUAL_TAGS, statuses: Object.keys(LINE_STATUSES), notes: CUSTOMER_NOTES },
@@ -288,6 +312,12 @@ function register(app, { auth, database, multer, requestUpload, writeQuoteFile, 
       row.tags_json = JSON.stringify((Array.isArray(line.tags) ? line.tags : []).filter((tag) => MANUAL_TAGS.includes(tag)));
       return row;
     });
+    if (request.user.role === "Quoter") {
+      const state = await ensureState(quote.id);
+      const pricing = await loadPricingFiles(quote.id);
+      const computed = computeQuote(rows.map((row) => ({ ...row, sell_price: null })), pricing.files, state.cost_column);
+      computed.lines.forEach((line, index) => { if (line.priceState === "locked") rows[index].sell_price = line.calc.accountPrice; });
+    }
     await knex.transaction(async (trx) => {
       await trx("qs_lines").where({ quote_id: quote.id }).delete();
       for (let start = 0; start < rows.length; start += 50) await trx("qs_lines").insert(rows.slice(start, start + 50));
@@ -304,7 +334,7 @@ function register(app, { auth, database, multer, requestUpload, writeQuoteFile, 
     if (typeof request.body?.costColumn === "string") changes.cost_column = request.body.costColumn.slice(0, 80);
     if (typeof request.body?.submitNote === "string") changes.submit_note = request.body.submitNote.slice(0, 2000);
     await knex("qs_quotes").where({ quote_id: request.params.id }).update(changes);
-    if (state.stage === 2 && changes.stage === 3) {
+    if ((state.stage === 2 && changes.stage === 3) || (state.stage < 5 && changes.stage === 5)) {
       const lines = await knex("qs_lines").where({ quote_id: request.params.id }).whereNotNull("their_item").whereNotNull("our_item");
       for (const line of lines) {
         const key = { their_item: String(line.their_item).toUpperCase(), their_uom: String(line.their_uom || "").toUpperCase() };
@@ -334,6 +364,31 @@ function register(app, { auth, database, multer, requestUpload, writeQuoteFile, 
       await trx("qs_pricing_files").insert({ quote_id: id, kind, file_name: request.file.originalname.slice(0, 255), row_count: parsed.rows.length,
         headers_json: JSON.stringify(parsed.headers), rows_json: JSON.stringify(parsed.rows), uploaded_by_id: request.user.id, uploaded_at: now() });
     });
+    return sendState(response, id);
+  });
+
+  // R-06: add rows pasted from a pricing source to one pricing file, so the cross-reference can price a new item.
+  const DEFAULT_HEADERS = ["Account Number", "Account Name", "Item Number", "Item Status", "New ItemID", "Item Description", "Item UOM",
+    "Default UOM", "Current Price", "Current List", "Current Cost", "Pricing Method"];
+  app.post("/api/qs/:id/pricing/:kind/rows", access, async (request, response) => {
+    const { id, kind } = request.params;
+    if (!["account", "house", "costing"].includes(kind)) return fail(response, 404, "Unknown file type.");
+    const text = String(request.body?.text || "").slice(0, 20000);
+    const existing = await knex("qs_pricing_files").where({ quote_id: id, kind }).first();
+    const headers = existing ? JSON.parse(existing.headers_json || "[]") : kind === "costing" ? null : DEFAULT_HEADERS;
+    if (!headers) return fail(response, 400, "Upload the costing report first, then paste rows into it.");
+    const norm = (v) => String(v ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const pasted = text.split(/\r?\n/).map((row) => row.split("\t")).filter((cells) => cells.some((c) => c.trim()));
+    const body = pasted.filter((cells) => norm(cells[0]) !== norm(headers[0])); // skip a copied header row
+    if (!body.length) return fail(response, 400, "Paste at least one row, copied straight from the pricing file.");
+    const rows = body.slice(0, 50).map((cells) => Object.fromEntries(headers.map((h, i) => [h, (cells[i] ?? "").trim()])));
+    const all = [...(existing ? JSON.parse(existing.rows_json || "[]") : []), ...rows];
+    if (existing) {
+      await knex("qs_pricing_files").where({ quote_id: id, kind }).update({ rows_json: JSON.stringify(all), row_count: all.length });
+    } else {
+      await knex("qs_pricing_files").insert({ quote_id: id, kind, file_name: "Pasted rows", row_count: all.length,
+        headers_json: JSON.stringify(headers), rows_json: JSON.stringify(all), uploaded_by_id: request.user.id, uploaded_at: now() });
+    }
     return sendState(response, id);
   });
 

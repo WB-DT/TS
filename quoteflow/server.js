@@ -107,6 +107,9 @@ app.get("/api/branding", async (_request, response) => {
     companyName: settings.company_name || "QuoteFlow",
     logoPath: settings.logo_path || "/quoteflow-logo.svg",
     standardLeadTimeDays: Number(settings.standard_lead_time_days || 14),
+    primaryColor: settings.brand_primary_color || "",
+    secondaryColor: settings.brand_secondary_color || "",
+    slogan: settings.brand_slogan || "",
   });
 });
 
@@ -116,8 +119,28 @@ app.put("/api/branding", auth.requireRole("Manager"), async (request, response) 
     response.status(400).json({ error: "Company name is required and must be 120 characters or fewer." });
     return;
   }
-  const settings = await database.settings.update({ company_name: companyName });
-  response.json({ companyName: settings.company_name, logoPath: settings.logo_path });
+  // Brand colors and slogan are optional; they're used on the customer file.
+  const brand = {};
+  for (const [field, key] of [["primaryColor", "brand_primary_color"], ["secondaryColor", "brand_secondary_color"]]) {
+    if (request.body?.[field] === undefined) continue;
+    const color = String(request.body[field] || "").trim();
+    if (color && !/^#[0-9a-f]{6}$/i.test(color)) {
+      response.status(400).json({ error: "Brand colors must be hex codes like #12355B." });
+      return;
+    }
+    brand[key] = color;
+  }
+  if (request.body?.slogan !== undefined) {
+    const slogan = String(request.body.slogan || "").trim();
+    if (slogan.length > 120) {
+      response.status(400).json({ error: "The slogan must be 120 characters or fewer." });
+      return;
+    }
+    brand.brand_slogan = slogan;
+  }
+  const settings = await database.settings.update({ company_name: companyName, ...brand });
+  response.json({ companyName: settings.company_name, logoPath: settings.logo_path, primaryColor: settings.brand_primary_color || "",
+    secondaryColor: settings.brand_secondary_color || "", slogan: settings.brand_slogan || "" });
 });
 
 app.post("/api/branding/logo", auth.requireRole("Manager"), brandUpload.single("logo"), async (request, response) => {
@@ -160,6 +183,9 @@ app.get("/api/workspace", auth.requireAuth, async (request, response) => {
       companyName: settings.company_name || "QuoteFlow",
       logoPath: settings.logo_path || "/quoteflow-logo.svg",
       standardLeadTimeDays: Number(settings.standard_lead_time_days || 14),
+      primaryColor: settings.brand_primary_color || "",
+      secondaryColor: settings.brand_secondary_color || "",
+      slogan: settings.brand_slogan || "",
     },
   });
 });
@@ -591,6 +617,7 @@ app.get("/api/xref/runs/:id/export", xrefAccess, async (request, response) => {
 
 
 require("./quote-stages").register(app, { auth, database, multer, requestUpload, writeQuoteFile, uploadsRoot: __dirname });
+require("./customer-pdf").register(app, { auth, database });
 
 
 app.get("/api/request-options", auth.requireRole("Rep"), async (request, response) => {
