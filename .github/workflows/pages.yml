@@ -1,18 +1,24 @@
 name: Deploy QuoteFlow to GitHub Pages
+
 on:
   push:
     branches: [main]
     paths:
-      - "quoteflow/**"
+      - "quoteflow/index.html"
+      - "quoteflow/404.html"
+      - "quoteflow/.nojekyll"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
 concurrency:
-  group: pages
+  group: quote-flow-github-pages
   cancel-in-progress: true
+
 jobs:
   deploy:
     environment:
@@ -20,10 +26,25 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify QuoteFlow static files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f quoteflow/index.html
+          test -f quoteflow/404.html
+          test -f quoteflow/.nojekyll
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload QuoteFlow Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: quoteflow
-      - id: deployment
+
+      - name: Deploy QuoteFlow to Pages
+        id: deployment
         uses: actions/deploy-pages@v4
