@@ -29,21 +29,23 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Verify QuoteFlow static files
+      - name: Stage the QuoteFlow static site
         shell: bash
         run: |
           set -euo pipefail
-          test -f quoteflow/index.html
-          test -f quoteflow/404.html
-          test -f quoteflow/.nojekyll
+          # Only the static SPA is published. quoteflow/ also holds the Node app
+          # (server.js, .env, node_modules, SQLite files), which must never be
+          # part of a public Pages artifact.
+          mkdir -p _site
+          cp quoteflow/index.html quoteflow/404.html quoteflow/.nojekyll _site/
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
       - name: Upload QuoteFlow Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
-          path: quoteflow
+          path: _site
 
       - name: Deploy QuoteFlow to Pages
         id: deployment
