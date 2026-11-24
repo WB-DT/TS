@@ -94,11 +94,39 @@ auth.registerAuthRoutes(app);
 require("./microsoft-auth").register(app, { database, safeUser: auth.safeUser, landingPath: auth.landingPath });
 app.use(express.static(path.join(__dirname, "public"), { index: false }));
 
+// Serve the attached Dataverse-connected SPA as the live surface (Option B).
+// The SPA authenticates directly to Dataverse from the browser via MSAL and
+// stores its config in localStorage, so the server is a static host for it.
+const spaRoot = path.join(__dirname, "..");
+
+/** Serves the attached index.html for the Dataverse-connected workspace. */
+app.get("/index.html", (_request, response) => {
+  response.sendFile(path.join(spaRoot, "index.html"));
+});
+
+/** Root serves the attached SPA (client-side routes: dashboard/queue/assignments/approvals/settings). */
+app.get("/", (_request, response) => {
+  response.sendFile(path.join(spaRoot, "index.html"));
+});
+
+/** Attached 404 page for the SPA surface. */
+app.get("/404", (_request, response) => {
+  response.sendFile(path.join(spaRoot, "404.html"));
+});
+
+// Legacy server-app workspace surfaces are kept in the tree but are not the served surface on this branch.
 app.get("/login", auth.redirectIfAuthenticated, (_request, response) => {
   response.sendFile(path.join(__dirname, "views", "login.html"));
 });
 
-app.get("/", auth.redirectHome);
+/** SPA fallback (registered last, after all API routes): any non-API path that
+ *  did not match a static asset or an explicit route renders index.html so the
+ *  attached SPA's client-side routing (dashboard/queue/assignments/approvals/settings)
+ *  works on page refresh. API paths are excluded so mistyped API routes still 404. */
+function spaFallback(request, response, next) {
+  if (request.path.startsWith("/api")) return next();
+  response.sendFile(path.join(spaRoot, "index.html"));
+}
 
 app.get("/api/branding", async (_request, response) => {
   const settings = await database.settings.get();
@@ -1460,6 +1488,11 @@ app.post("/api/quotes/:id/status", auth.requireAuth, async (request, response) =
 app.get("/:role/:page", auth.requirePageAccess, (_request, response) => {
   response.sendFile(path.join(__dirname, "views", "app.html"));
 });
+
+// SPA fallback (last middleware, after every route): client-side routes of
+// the attached Dataverse SPA render index.html on refresh so page-reloads keep
+// working, while mistyped /api paths still fall through to Express's 404.
+app.use(spaFallback);
 
 function fieldValue(field) {
   if (!field) return "";
