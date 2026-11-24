@@ -519,24 +519,76 @@ app.get("/api/quote-log", quoteLogAccess, async (request, response) => {
     return query;
   };
 
-  const filtered = (() => {
-    const query = base();
-    if (!stage) return query;
-    const returned = "cr714_datereturnedorkilled";
-    const assigned = (builder) => {
-      builder.whereNotNull("cr714_assignedto").orWhereNotNull("cr714_dateassigned");
-    };
-    if (stage === "Returned") return query.whereNotNull(returned);
-    if (stage === "Approved") return query.whereNull(returned).whereNotNull("cr714_completiontime");
-    if (stage === "In revision") return query.whereNull(returned).where(
-      (builder) => builder.where(function () { builder.where(function () { builder.whereRaw("lower(cr714_sentforrevision) = 'true'"); }).orWhereNotNull("cr714_datesentforrevision"); })
-    );
-    if (stage === "Awaiting approval") return query.whereNull(returned).where(assigned).whereNotNull("cr714_datequalified");
-    if (stage === "Assigned") return query.whereNull(returned).where(assigned);
-    if (stage === "Ready to assign") return query.whereNull(returned).whereNot(assigned).whereNotNull("cr714_datequalified");
-    if (stage === "Submitted") return query.whereNull(returned).whereNot(assigned).whereNull("cr714_datequalified");
+  const applyQuoteLogStage = (query, stage) => {
+    // "In revision" means: sentforrevision text (case-insensitive) is 'true', OR
+    // datesentforrevision is set. coalesce() turns a NULL sentforrevision into '' so the
+    // lower() comparison is never NULL (which would otherwise make NOT(...) exclude rows
+    // that are actually not-in-revision).
+    const inRevision = (qb) => qb.where(function () {
+      this.whereRaw("lower(coalesce(cr714_sentforrevision, '')) = 'true'")
+        .orWhereNotNull("cr714_datesentforrevision");
+    });
+    const notInRevision = (qb) => qb
+      .whereRaw("lower(coalesce(cr714_sentforrevision, '')) != 'true'")
+      .whereNull("cr714_datesentforrevision");
+    const awaitingApproval = (qb) => qb
+      .whereNotNull("cr714_asapapprovingmanager")
+      .whereNotNull("cr714_assignedto")
+      .whereNotNull("cr714_datequalified");
+    const assigned = (qb) => qb
+      .whereNotNull("cr714_assignedto")
+      .orWhereNotNull("cr714_dateassigned");
+
+    if (stage === "Returned") {
+      return query.whereNotNull("cr714_datereturnedorkilled");
+    }
+    if (stage === "Approved") {
+      return query.whereNull("cr714_datereturnedorkilled").whereNotNull("cr714_completiontime");
+    }
+    if (stage === "In revision") {
+      return query.whereNull("cr714_datereturnedorkilled")
+        .whereNull("cr714_completiontime")
+        .where(inRevision);
+    }
+    if (stage === "Awaiting approval") {
+      return query
+        .whereNull("cr714_datereturnedorkilled")
+        .whereNull("cr714_completiontime")
+        .where(notInRevision)
+        .whereNotNull("cr714_asapapprovingmanager")
+        .whereNotNull("cr714_assignedto")
+        .whereNotNull("cr714_datequalified");
+    }
+    if (stage === "Assigned") {
+      return query
+        .whereNull("cr714_datereturnedorkilled")
+        .whereNull("cr714_completiontime")
+        .where(notInRevision)
+        .whereNot(awaitingApproval)
+        .where(assigned);
+    }
+    if (stage === "Ready to assign") {
+      return query
+        .whereNull("cr714_datereturnedorkilled")
+        .whereNull("cr714_completiontime")
+        .where(notInRevision)
+        .whereNull("cr714_assignedto")
+        .whereNull("cr714_dateassigned")
+        .whereNotNull("cr714_datequalified");
+    }
+    if (stage === "Submitted") {
+      return query
+        .whereNull("cr714_datereturnedorkilled")
+        .whereNull("cr714_completiontime")
+        .where(notInRevision)
+        .whereNull("cr714_assignedto")
+        .whereNull("cr714_dateassigned")
+        .whereNull("cr714_datequalified");
+    }
     return query;
-  })();
+  };
+
+  const filtered = stage ? applyQuoteLogStage(base(), stage) : base();
 
   const [matching] = await filtered.clone().count({ count: "*" });
   const rows = await filtered.clone().select(listColumns).orderBy("modifiedon", "desc").limit(100).offset(page * 100);
@@ -544,19 +596,7 @@ app.get("/api/quote-log", quoteLogAccess, async (request, response) => {
   const stageNames = ["Submitted", "Ready to assign", "Assigned", "Awaiting approval", "In revision", "Approved", "Returned"];
   const stages = {};
   for (const name of stageNames) {
-    const query = base();
-    const returned = "cr714_datereturnedorkilled";
-    const assigned = (builder) => builder.whereNotNull("cr714_assignedto").orWhereNotNull("cr714_dateassigned");
-    if (name === "Returned") query.whereNotNull(returned);
-    else if (name === "Approved") query.whereNull(returned).whereNotNull("cr714_completiontime");
-    else if (name === "In revision") query.whereNull(returned).where(function () {
-      this.where(function () { this.whereRaw("lower(cr714_sentforrevision) = 'true'"); }).orWhereNotNull("cr714_datesentforrevision");
-    });
-    else if (name === "Awaiting approval") query.whereNull(returned).where(assigned).whereNotNull("cr714_datequalified");
-    else if (name === "Assigned") query.whereNull(returned).where(assigned);
-    else if (name === "Ready to assign") query.whereNull(returned).whereNot(assigned).whereNotNull("cr714_datequalified");
-    else if (name === "Submitted") query.whereNull(returned).whereNot(assigned).whereNull("cr714_datequalified");
-    const [result] = await query.count({ count: "*" });
+    const [result] = await applyQuoteLogStage(base(), name).clone().count({ count: "*" });
     stages[name] = Number(result.count);
   }
 
