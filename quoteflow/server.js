@@ -470,6 +470,118 @@ app.get("/api/request-log/:log/:id", requestLogAccess, async (request, response)
   response.json({ log: log.label, row });
 });
 
+// ---------- Dataverse Quote Log (live table backing the QuoteFlow SPA pages) ----------
+// The same Dataverse Quote Log the attached index.html reads directly from the browser.
+// This server surface reads the local cr714_quotelog table (migration 014) so the branch
+// can serve the same pages from the Node app instead of only from GitHub Pages.
+// Status values match the attached SPA's status() function exactly.
+const quoteLogAccess = requestLogAccess;
+
+function quoteLogStatus(row) {
+  if (row.cr714_datereturnedorkilled) return "Returned";
+  if (row.cr714_completiontime) return "Approved";
+  if (String(row.cr714_sentforrevision).toLowerCase() === "true" || row.cr714_datesentforrevision) return "In revision";
+  if (row.cr714_asapapprovingmanager && row.cr714_assignedto && row.cr714_datequalified) return "Awaiting approval";
+  if (row.cr714_assignedto || row.cr714_dateassigned) return "Assigned";
+  if (row.cr714_datequalified) return "Ready to assign";
+  return "Submitted";
+}
+
+app.get("/api/quote-log", quoteLogAccess, async (request, response) => {
+  const search = String(request.query.search || "").trim();
+  const stage = String(request.query.stage || "");
+  const page = Math.max(0, Number.parseInt(request.query.page, 10) || 0);
+
+  const searchColumns = [
+    "cr714_quotenumber", "cr714_companyname", "cr714_customernumber", "cr714_submittername",
+    "cr714_assignedto", "cr714_ppl", "cr714_recordkey",
+  ];
+  const listColumns = [
+    "cr714_quotelogid", "createdon", "modifiedon", "cr714_recordkey", "cr714_asapapprovingmanager",
+    "cr714_asapnotes", "cr714_assignedto", "cr714_attachmentcount", "cr714_category", "cr714_companyname",
+    "cr714_competitor", "cr714_completiontime", "cr714_customernumber", "cr714_customerorlead",
+    "cr714_dateassigned", "cr714_datequalified", "cr714_datereturnedorkilled", "cr714_datesentforrevision",
+    "cr714_grossprofitpercent", "cr714_itemstoquote", "cr714_lockedindate", "cr714_numberofchanges",
+    "cr714_oldquotenumber", "cr714_qualifierquoternotes", "cr714_quotenumber", "cr714_requestnotes",
+    "cr714_requestpriority", "cr714_revisionnotes", "cr714_sentforrevision", "cr714_sourcefile",
+    "cr714_sourcemodifiedon", "cr714_starttime", "cr714_submitteremail", "cr714_submittername",
+    "cr714_submittingagentrole", "cr714_totalitemsquoted", "cr714_wbsellpricetotal",
+  ];
+
+  const base = () => {
+    const query = database.connection("cr714_quotelog");
+    if (search) {
+      const like = `%${search}%`;
+      query.where((builder) => {
+        for (const column of searchColumns) builder.orWhere(column, "like", like);
+      });
+    }
+    return query;
+  };
+
+  const filtered = (() => {
+    const query = base();
+    if (!stage) return query;
+    const returned = "cr714_datereturnedorkilled";
+    const assigned = (builder) => {
+      builder.whereNotNull("cr714_assignedto").orWhereNotNull("cr714_dateassigned");
+    };
+    if (stage === "Returned") return query.whereNotNull(returned);
+    if (stage === "Approved") return query.whereNull(returned).whereNotNull("cr714_completiontime");
+    if (stage === "In revision") return query.whereNull(returned).where(
+      (builder) => builder.where(function () { builder.where(function () { builder.whereRaw("lower(cr714_sentforrevision) = 'true'"); }).orWhereNotNull("cr714_datesentforrevision"); })
+    );
+    if (stage === "Awaiting approval") return query.whereNull(returned).where(assigned).whereNotNull("cr714_datequalified");
+    if (stage === "Assigned") return query.whereNull(returned).where(assigned);
+    if (stage === "Ready to assign") return query.whereNull(returned).whereNot(assigned).whereNotNull("cr714_datequalified");
+    if (stage === "Submitted") return query.whereNull(returned).whereNot(assigned).whereNull("cr714_datequalified");
+    return query;
+  })();
+
+  const [matching] = await filtered.clone().count({ count: "*" });
+  const rows = await filtered.clone().select(listColumns).orderBy("modifiedon", "desc").limit(100).offset(page * 100);
+
+  const stageNames = ["Submitted", "Ready to assign", "Assigned", "Awaiting approval", "In revision", "Approved", "Returned"];
+  const stages = {};
+  for (const name of stageNames) {
+    const query = base();
+    const returned = "cr714_datereturnedorkilled";
+    const assigned = (builder) => builder.whereNotNull("cr714_assignedto").orWhereNotNull("cr714_dateassigned");
+    if (name === "Returned") query.whereNotNull(returned);
+    else if (name === "Approved") query.whereNull(returned).whereNotNull("cr714_completiontime");
+    else if (name === "In revision") query.whereNull(returned).where(function () {
+      this.where(function () { this.whereRaw("lower(cr714_sentforrevision) = 'true'"); }).orWhereNotNull("cr714_datesentforrevision");
+    });
+    else if (name === "Awaiting approval") query.whereNull(returned).where(assigned).whereNotNull("cr714_datequalified");
+    else if (name === "Assigned") query.whereNull(returned).where(assigned);
+    else if (name === "Ready to assign") query.whereNull(returned).whereNot(assigned).whereNotNull("cr714_datequalified");
+    else if (name === "Submitted") query.whereNull(returned).whereNot(assigned).whereNull("cr714_datequalified");
+    const [result] = await query.count({ count: "*" });
+    stages[name] = Number(result.count);
+  }
+
+  const [total] = await database.connection("cr714_quotelog").count({ count: "*" });
+  response.set("Cache-Control", "no-store");
+  response.json({
+    table: "cr714_quotelog",
+    total: Number(total.count),
+    matching: Number(matching.count),
+    page,
+    pageSize: 100,
+    stages,
+    rows: rows.map((row) => ({ ...row, status: quoteLogStatus(row) })),
+  });
+});
+
+app.get("/api/quote-log/:id", quoteLogAccess, async (request, response) => {
+  const row = await database.connection("cr714_quotelog").where("cr714_quotelogid", request.params.id).first();
+  if (!row) {
+    response.status(404).json({ error: "Row not found." });
+    return;
+  }
+  response.json({ table: "cr714_quotelog", row: { ...row, status: quoteLogStatus(row) } });
+});
+
 
 // ---------- Read a document (OCR proof) ----------
 // Reads an uploaded PDF or photo in memory and returns the item lines it finds. Nothing is saved.
