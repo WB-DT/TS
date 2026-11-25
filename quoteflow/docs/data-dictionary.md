@@ -10,7 +10,7 @@ The schema is managed by Knex migrations in `db/migrations`. Application writes 
 
 ### `users`
 
-One row per application user. Demo identities are seeded from `db/seed.js`. Users are deactivated, never deleted, so their quote and edit history stays intact. On startup, every user whose email is listed in the `MANAGER_EMAILS` environment variable (comma-separated, set in `.env`) is granted the `Manager` role automatically; this is the first-manager setup and each grant is logged in `user_audit`.
+One row per application user. Sign-in identities are seeded from `db/seed.js`; the made-up sample dataset (accounts, PPLs, quotes and files) is seeded only when `SEED_DEMO_DATA=true`, because QuoteFlow normally reads the client's Dataverse Quote Log and MDM Log. Users are deactivated, never deleted, so their quote and edit history stays intact. On startup, every user whose email is listed in the `MANAGER_EMAILS` environment variable (comma-separated, set in `.env`) is granted the `Manager` role automatically; this is the first-manager setup and each grant is logged in `user_audit`.
 
 | Column | Type | Required | Definition |
 | --- | --- | --- | --- |

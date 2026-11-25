@@ -39,8 +39,15 @@ function initializeRequestLog() {
   if (!root || root.dataset.initialized === "true") return;
   root.dataset.initialized = "true";
 
-  const state = { log: "quote", stage: "", search: "", page: 0 };
+  const state = { log: "quote", stage: "", search: "", page: 0, dataverse: null };
   const tabs = root.querySelectorAll("[data-log-tab]");
+  const fileInput = document.querySelector("#rl-file");
+  const importButton = document.querySelector("#rl-import");
+  const importStatus = document.querySelector("#rl-import-status");
+  const syncButton = document.querySelector("#rl-sync");
+  const exportButton = document.querySelector("#rl-export");
+  const syncStatus = document.querySelector("#rl-sync-status");
+  const syncMeta = document.querySelector("#rl-sync-meta");
   const cards = document.querySelector("#rl-cards");
   const searchForm = document.querySelector("#rl-search");
   const list = document.querySelector("#rl-list");
@@ -58,6 +65,11 @@ function initializeRequestLog() {
     return `${(Math.abs(number) <= 1 ? number * 100 : number).toFixed(1)}%`;
   };
   const stageClass = (stage) => ({ New: "status-pill--info", Qualified: "status-pill--review", Assigned: "status-pill--review" })[stage] || "status-pill--success";
+  // A Dataverse read can come back with an expired token; msal-auth.js refreshes it once
+  // and retries, so a long-lived tab keeps working without a full sign-in.
+  const dataverseFetch = (url, options) => (window.QuoteFlowMsal?.fetchWithRefresh
+    ? window.QuoteFlowMsal.fetchWithRefresh(url, options)
+    : fetch(url, options));
 
   const columnsFor = {
     quote: [
@@ -85,6 +97,66 @@ function initializeRequestLog() {
     ],
   };
 
+  // Connection state for the sync bar: org url, entity set, last sync, who is signed in.
+  async function loadDataverseStatus() {
+    try {
+      const response = await fetch("/api/dataverse/status", { headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error("Dataverse status is unavailable.");
+      state.dataverse = await response.json();
+    } catch {
+      state.dataverse = { configured: false, signedIn: false };
+    }
+    renderDataverseStatus();
+    return state.dataverse;
+  }
+
+  function renderDataverseStatus() {
+    const dataverse = state.dataverse || {};
+    if (!syncMeta) return;
+    const synced = dataverse.lastSyncAt ? new Date(dataverse.lastSyncAt).toLocaleString() : "never";
+    if (!dataverse.configured) {
+      syncMeta.textContent = "Dataverse is not configured on this server. Import an .xlsx export below, or set DATAVERSE_URL, AZURE_CLIENT_ID and AZURE_TENANT_ID.";
+      if (syncButton) syncButton.hidden = true;
+      return;
+    }
+    if (syncButton) syncButton.hidden = !dataverse.signedIn;
+    syncMeta.innerHTML = dataverse.signedIn
+      ? `Reading <strong>${escapeHtml(dataverse.baseUrl)}</strong> as ${escapeHtml(dataverse.email || "your work account")} · last sync ${escapeHtml(synced)}`
+      : `Signed in without Microsoft, so this shows the last sync or import (${escapeHtml(synced)}). Sign in with Microsoft to pull live data.`;
+  }
+
+  // Pull the Quote Log and MDM Log from Dataverse into their mirror tables.
+  async function runSync({ quiet = false } = {}) {
+    if (!state.dataverse?.signedIn || !syncButton) return false;
+    syncButton.disabled = true;
+    if (syncStatus) {
+      syncStatus.className = "request-feedback";
+      syncStatus.textContent = "Reading the Quote Log and MDM Log from Dataverse…";
+    }
+    try {
+      const response = await dataverseFetch("/api/dataverse/sync", { method: "POST" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "The Dataverse sync did not finish.");
+      if (syncStatus) {
+        syncStatus.className = "request-feedback is-success";
+        syncStatus.textContent = payload.summary
+          .map((item) => `${item.log}: ${item.fetched} read, ${item.added} added, ${item.updated} updated, ${item.removed} removed`)
+          .join(" · ");
+      }
+      await loadDataverseStatus();
+      if (!quiet) await loadList();
+      return true;
+    } catch (error) {
+      if (syncStatus) {
+        syncStatus.className = "request-feedback is-error";
+        syncStatus.textContent = error.message;
+      }
+      return false;
+    } finally {
+      syncButton.disabled = false;
+    }
+  }
+
   async function loadList() {
     detail.hidden = true;
     list.innerHTML = '<p class="section-description">Loading…</p>';
@@ -102,7 +174,7 @@ function initializeRequestLog() {
       if (!payload.rows.length) {
         list.innerHTML = payload.total
           ? '<p class="empty-items">No rows match. Clear the search or pick another stage.</p>'
-          : '<p class="empty-items">This log is empty. Import the .xlsx export above to load it.</p>';
+          : '<p class="empty-items">This log is empty. Use “Sync from Dataverse” above, or import an .xlsx export, to load it.</p>';
         return;
       }
       const idColumn = state.log === "quote" ? "cr714_quotelogid" : "cr714_mdmlogid";
@@ -138,10 +210,50 @@ function initializeRequestLog() {
       const title = state.log === "quote"
         ? `${row.cr714_quotenumber || "No Q-number yet"} · ${row.cr714_companyname || ""}`
         : `${row.cr714_accountnumber || "No account"} · ${row.cr714_requestorname || ""}`;
+      // [Dataverse map] cr714_quotelog.cr714_assignedto + cr714_dateassigned: the
+      // original SPA's "Save to Dataverse" assignment box, now on the detail panel.
+      const canWrite = state.log === "quote" && Boolean(state.dataverse?.signedIn);
+      const assignment = canWrite ? `
+        <form class="rl-assign" id="rl-assign">
+          <label for="rl-assignee">Assign in Dataverse (cr714_assignedto)
+            <input id="rl-assignee" name="assignedTo" type="text" value="${escapeHtml(row.cr714_assignedto || "")}" placeholder="Quoter name or email" />
+          </label>
+          <button class="settings-save-button" type="submit">Save to Dataverse</button>
+          <p class="request-feedback" id="rl-assign-status" role="status" aria-live="polite"></p>
+        </form>` : "";
       detail.innerHTML = `
         <div class="rl-detail-head"><h2 class="section-title">${escapeHtml(title)}</h2><button class="secondary-button" type="button" id="rl-close">Close</button></div>
+        ${assignment}
         <dl class="rl-fields">${Object.entries(row).filter(([column]) => column !== "qf_row_hash").map(([column, value]) => `
           <div><dt>${escapeHtml(label(column))}</dt><dd>${column === "qf_imported_at" && value ? escapeHtml(new Date(Number(value) * 1000).toLocaleString()) : escapeHtml(value ?? "—")}</dd></div>`).join("")}</dl>`;
+      const assignmentForm = detail.querySelector("#rl-assign");
+      if (assignmentForm) {
+        assignmentForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const feedback = detail.querySelector("#rl-assign-status");
+          const saveButton = assignmentForm.querySelector("button[type='submit']");
+          saveButton.disabled = true;
+          feedback.className = "request-feedback";
+          feedback.textContent = "Saving to Dataverse…";
+          try {
+            const response = await dataverseFetch(`/api/dataverse/quote-log/${encodeURIComponent(id)}/assign`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ assignedTo: assignmentForm.elements.assignedTo.value.trim() }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || "Dataverse refused the change.");
+            feedback.className = "request-feedback is-success";
+            feedback.textContent = payload.assignedTo ? `Assigned to ${payload.assignedTo}.` : "Assignment cleared.";
+            loadList();
+          } catch (error) {
+            feedback.className = "request-feedback is-error";
+            feedback.textContent = error.message;
+          } finally {
+            saveButton.disabled = false;
+          }
+        });
+      }
       detail.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (error) {
       detail.innerHTML = `<p class="request-feedback is-error">${escapeHtml(error.message)}</p>`;
@@ -187,8 +299,48 @@ function initializeRequestLog() {
   detail.addEventListener("click", (event) => {
     if (event.target.id === "rl-close") detail.hidden = true;
   });
+  syncButton?.addEventListener("click", () => runSync());
+  exportButton?.addEventListener("click", () => {
+    window.location.assign(`/api/dataverse/log/${encodeURIComponent(state.log)}/export`);
+  });
 
-  loadList();
+  fileInput.addEventListener("change", () => {
+    importStatus.className = "request-feedback";
+    importStatus.textContent = fileInput.files[0] ? `Selected: ${fileInput.files[0].name}` : "";
+  });
+  importButton.addEventListener("click", async () => {
+    if (!fileInput.files[0]) {
+      importStatus.className = "request-feedback is-error";
+      importStatus.textContent = "Choose the .xlsx export first.";
+      return;
+    }
+    importButton.disabled = true;
+    importStatus.className = "request-feedback";
+    importStatus.textContent = "Importing… large logs can take a minute.";
+    try {
+      const body = new FormData();
+      body.append("file", fileInput.files[0]);
+      const response = await fetch("/api/request-log/import", { method: "POST", body });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "The import didn't work.");
+      importStatus.className = "request-feedback is-success";
+      importStatus.innerHTML = payload.summary.map((item) => `<strong>${escapeHtml(item.log)}</strong>: ${item.added} added, ${item.updated} updated, ${item.unchanged} unchanged${item.skipped ? `, ${item.skipped} skipped (no ID)` : ""}${item.missingColumns.length ? `. Not in this file: ${escapeHtml(item.missingColumns.join(", "))}` : ""}.`).join("<br>");
+      fileInput.value = "";
+      loadList();
+    } catch (error) {
+      importStatus.className = "request-feedback is-error";
+      importStatus.textContent = error.message;
+    } finally {
+      importButton.disabled = false;
+    }
+  });
+
+  // First visit with a Microsoft sign-in: pull once, then show the log.
+  (async () => {
+    const dataverse = await loadDataverseStatus();
+    if (dataverse.signedIn && !dataverse.lastSyncAt) await runSync({ quiet: true });
+    await loadList();
+  })();
 }
 
 document.addEventListener("workspace:ready", initializeRequestLog);

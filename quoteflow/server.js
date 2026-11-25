@@ -18,6 +18,7 @@ const pricing = require("./pricing");
 const xref = require("./xref");
 const ocr = require("./ocr");
 const dataverseLogs = require("./dataverse-logs");
+const dataverse = require("./dataverse");
 const lockedPrices = require("./locked-prices");
 const teamsImport = require("./teams-import");
 const quoteTemplates = require("./templates");
@@ -92,40 +93,61 @@ app.use(express.json({ limit: "2mb" }));
 app.use(auth.sessionMiddleware);
 auth.registerAuthRoutes(app);
 require("./microsoft-auth").register(app, { database, safeUser: auth.safeUser, landingPath: auth.landingPath });
+// Sign in with Microsoft in the browser (MSAL) + hand the Dataverse token to the server.
+require("./dataverse-auth").register(app, { database, safeUser: auth.safeUser, landingPath: auth.landingPath });
 app.use(express.static(path.join(__dirname, "public"), { index: false }));
+
+// MSAL browser build, served from the installed package so sign-in works without a
+// CDN and keeps the version the app was tested with.
+app.get("/vendor/msal-browser.min.js", async (_request, response, next) => {
+  try {
+    // The package's exports map hides lib/*, so resolve the package root instead.
+    const packageRoot = path.dirname(require.resolve("@azure/msal-browser/package.json"));
+    const body = await fs.readFile(path.join(packageRoot, "lib", "msal-browser.min.js"));
+    response.type("application/javascript").set("Cache-Control", "public, max-age=86400").send(body);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// sendFile() refuses any path that runs through a dot-directory (for example a Windows
+// worktree at C:\Users\me\.freebuff\...), which turned every page route into a 404.
+// Reading the file and sending the buffer works wherever the app is checked out.
+async function sendPage(response, next, filePath) {
+  try {
+    response.type(path.extname(filePath)).send(await fs.readFile(filePath));
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      response.status(404).send("Page not found.");
+      return;
+    }
+    next(error);
+  }
+}
 
 // Serve the attached Dataverse-connected SPA as the live surface (Option B).
 // The SPA authenticates directly to Dataverse from the browser via MSAL and
 // stores its config in localStorage, so the server is a static host for it.
 const spaRoot = path.join(__dirname, "..");
 
-/** Serves the attached index.html for the Dataverse-connected workspace. */
-app.get("/index.html", (_request, response) => {
-  response.sendFile(path.join(spaRoot, "index.html"));
-});
+/** The original single-page QuoteFlow is still available for reference. */
+app.get("/index.html", (_request, response, next) => sendPage(response, next, path.join(spaRoot, "index.html")));
 
-/** Root serves the attached SPA (client-side routes: dashboard/queue/assignments/approvals/settings). */
-app.get("/", (_request, response) => {
-  response.sendFile(path.join(spaRoot, "index.html"));
-});
+/** Root opens the app: the workspace when signed in, otherwise the sign-in page. */
+app.get("/", auth.redirectHome);
 
-/** Attached 404 page for the SPA surface. */
-app.get("/404", (_request, response) => {
-  response.sendFile(path.join(spaRoot, "404.html"));
-});
+/** Attached 404 page, when the repo has one. */
+app.get("/404", (_request, response, next) => sendPage(response, next, path.join(spaRoot, "404.html")));
 
-// Legacy server-app workspace surfaces are kept in the tree but are not the served surface on this branch.
-app.get("/login", auth.redirectIfAuthenticated, (_request, response) => {
-  response.sendFile(path.join(__dirname, "views", "login.html"));
-});
+app.get("/login", auth.redirectIfAuthenticated, (_request, response, next) => sendPage(response, next, path.join(__dirname, "views", "login.html")));
 
 /** SPA fallback (registered last, after all API routes): any non-API path that
  *  did not match a static asset or an explicit route renders index.html so the
  *  attached SPA's client-side routing (dashboard/queue/assignments/approvals/settings)
  *  works on page refresh. API paths are excluded so mistyped API routes still 404. */
-function spaFallback(request, response, next) {
+function pageFallback(request, response, next) {
   if (request.path.startsWith("/api")) return next();
-  response.sendFile(path.join(spaRoot, "index.html"));
+  response.status(404).send("Page not found.");
 }
 
 app.get("/api/branding", async (_request, response) => {
@@ -207,6 +229,8 @@ app.get("/api/workspace", auth.requireAuth, async (request, response) => {
     reports,
     quoters,
     reassignments,
+    // Lets the dashboard show the live Dataverse quote log when someone is signed in.
+    dataverse: dataverse.status(request.session),
     branding: {
       companyName: settings.company_name || "QuoteFlow",
       logoPath: settings.logo_path || "/quoteflow-logo.svg",
@@ -405,6 +429,54 @@ function applyStage(query, logKey, stage) {
   return query;
 }
 
+// Import: adds new rows and updates rows that changed since the last import. Never deletes.
+app.post("/api/request-log/import", requestLogAccess, logUpload.single("file"), async (request, response) => {
+  if (!request.file) {
+    response.status(400).json({ error: "Choose the .xlsx export." });
+    return;
+  }
+  let results;
+  try {
+    results = dataverseLogs.parseDataverseExport(request.file.buffer);
+  } catch (error) {
+    response.status(400).json({ error: error.status ? error.message : "That file could not be read. Make sure it is the .xlsx export." });
+    return;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const summary = [];
+  for (const result of results) {
+    const log = dataverseLogs.LOGS[result.logKey];
+    const existing = new Map(
+      (await database.connection(log.table).select(log.idColumn, "qf_row_hash")).map((row) => [row[log.idColumn], row.qf_row_hash]),
+    );
+    const toInsert = [];
+    const toUpdate = [];
+    for (const record of result.records) {
+      const savedHash = existing.get(record[log.idColumn]);
+      if (savedHash === undefined) toInsert.push({ ...record, qf_imported_at: now });
+      else if (savedHash !== record.qf_row_hash) toUpdate.push({ ...record, qf_imported_at: now });
+    }
+    await database.connection.transaction(async (trx) => {
+      for (let start = 0; start < toInsert.length; start += 25) {
+        await trx(log.table).insert(toInsert.slice(start, start + 25));
+      }
+      for (const record of toUpdate) {
+        const { [log.idColumn]: id, ...changes } = record;
+        await trx(log.table).where(log.idColumn, id).update(changes);
+      }
+    });
+    summary.push({
+      log: log.label,
+      sheet: result.sheetName,
+      added: toInsert.length,
+      updated: toUpdate.length,
+      unchanged: result.records.length - toInsert.length - toUpdate.length,
+      skipped: result.skipped,
+      missingColumns: result.missingColumns,
+    });
+  }
+  response.json({ summary });
+});
 // List: one page of a log, newest first, with search and stage filters.
 app.get("/api/request-log/:log", requestLogAccess, async (request, response) => {
   const logKey = request.params.log;
@@ -620,6 +692,137 @@ app.get("/api/quote-log/:id", quoteLogAccess, async (request, response) => {
     return;
   }
   response.json({ table: "cr714_quotelog", row: { ...row, status: quoteLogStatus(row) } });
+});
+
+// ---------- Dataverse (live OData) ----------
+// The browser signs in with Microsoft (MSAL) and posts its Dataverse token to
+// /api/auth/dataverse/session. These routes then run OData as that person, pull the
+// client's logs into their mirror tables, and write an assignment back.
+// [Dataverse map] cr714_quotelog -> Quote Log, cr714_mdmlog -> MDM Log.
+
+function dataverseFailure(error, response) {
+  const status = Number(error.status) || 500;
+  if (status >= 500) console.error("Dataverse:", error.message);
+  response.status(status).json({
+    error: status >= 500 ? `Dataverse did not answer: ${error.message}` : error.message,
+    code: error.code || "dataverse-error",
+  });
+}
+
+// Connection state: org url, entity sets, the signed-in person, last sync.
+app.get("/api/dataverse/status", auth.requireAuth, (request, response) => {
+  response.set("Cache-Control", "no-store");
+  response.json(dataverse.status(request.session));
+});
+
+// Pull both Dataverse logs into their mirror tables (new rows added, changed rows
+// updated, rows deleted in Dataverse removed - the mirror is a copy of the table).
+app.post("/api/dataverse/sync", requestLogAccess, async (request, response) => {
+  if (!dataverse.signedIn(request.session)) {
+    response.status(401).json({
+      error: "Sign in with Microsoft to pull the Quote Log and MDM Log from Dataverse.",
+      code: "dataverse-signin-required",
+    });
+    return;
+  }
+  try {
+    const state = await dataverse.sync(request.session);
+    response.json({ syncedAt: state.at, summary: state.summary });
+  } catch (error) {
+    dataverseFailure(error, response);
+  }
+});
+
+// The original SPA's dashboard, from the mirrored Quote Log: how many quotes are in
+// each stage, what the pipeline is worth, and the newest rows.
+app.get("/api/dataverse/overview", auth.requireAuth, async (request, response) => {
+  const status = dataverse.status(request.session);
+  if (!status.signedIn) {
+    response.json({ ...status, total: 0, pipelineValue: 0, needsAssignment: 0, awaitingApproval: 0, stages: {}, recent: [] });
+    return;
+  }
+  try {
+    // A dashboard visit is a gentle sync: no more than once every five minutes.
+    const state = await dataverse.syncIfStale(request.session, 5 * 60 * 1000);
+    const stageColumns = [
+      "cr714_datereturnedorkilled", "cr714_completiontime", "cr714_sentforrevision",
+      "cr714_datesentforrevision", "cr714_asapapprovingmanager", "cr714_assignedto",
+      "cr714_dateassigned", "cr714_datequalified", "cr714_wbsellpricetotal",
+    ];
+    const metricRows = await database.connection("cr714_quotelog").select(stageColumns);
+    const stages = { Submitted: 0, "Ready to assign": 0, Assigned: 0, "Awaiting approval": 0, "In revision": 0, Approved: 0, Returned: 0 };
+    let pipelineValue = 0;
+    for (const row of metricRows) {
+      const stage = quoteLogStatus(row);
+      stages[stage] = (stages[stage] || 0) + 1;
+      pipelineValue += Number(row.cr714_wbsellpricetotal) || 0;
+    }
+    const recentRows = await database.connection("cr714_quotelog").select("*").orderBy("modifiedon", "desc").limit(10);
+    response.set("Cache-Control", "no-store");
+    response.json({
+      ...dataverse.status(request.session),
+      syncedAt: state?.at || status.lastSyncAt,
+      total: metricRows.length,
+      pipelineValue,
+      stages,
+      needsAssignment: stages.Submitted + stages["Ready to assign"],
+      awaitingApproval: stages["Awaiting approval"],
+      recent: recentRows.map((row) => ({
+        id: row.cr714_quotelogid,
+        quoteNumber: row.cr714_quotenumber || row.cr714_oldquotenumber || row.cr714_recordkey || "Pending",
+        companyName: row.cr714_companyname || "",
+        assignedTo: row.cr714_assignedto || "",
+        stage: quoteLogStatus(row),
+        value: Number(row.cr714_wbsellpricetotal) || 0,
+      })),
+    });
+  } catch (error) {
+    dataverseFailure(error, response);
+  }
+});
+
+// Export one log as CSV. Headers are the Dataverse column names so the file maps
+// straight back to the table; the stage column is QuoteFlow's own classification.
+function csvValue(value) {
+  const text = String(value ?? "");
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+app.get("/api/dataverse/log/:log/export", requestLogAccess, async (request, response) => {
+  const logKey = request.params.log;
+  const log = dataverseLogs.LOGS[logKey];
+  if (!log) {
+    response.status(404).json({ error: "Unknown log." });
+    return;
+  }
+  const columns = [log.idColumn, ...log.columns];
+  const rows = await database.connection(log.table).select(columns).orderBy("createdon", "desc").limit(50000);
+  const lines = [[...columns, "stage"].join(",")];
+  for (const row of rows) {
+    lines.push([...columns.map((column) => row[column]), dataverseLogs.stageOf(logKey, row)].map(csvValue).join(","));
+  }
+  const stamp = new Date().toISOString().slice(0, 10);
+  response.set("Content-Type", "text/csv; charset=utf-8");
+  response.set("Content-Disposition", `attachment; filename="QuoteFlow-${logKey}-log-${stamp}.csv"`);
+  response.send(`\uFEFF${lines.join("\r\n")}`);
+});
+
+// Write an assignment back to Dataverse (the original SPA's "Save to Dataverse").
+app.post("/api/dataverse/quote-log/:id/assign", requestLogAccess, async (request, response) => {
+  if (!dataverse.signedIn(request.session)) {
+    response.status(401).json({
+      error: "Sign in with Microsoft to save an assignment to Dataverse.",
+      code: "dataverse-signin-required",
+    });
+    return;
+  }
+  const assignedTo = String(request.body?.assignedTo || "").trim();
+  try {
+    const result = await dataverse.assignQuoteLog(request.session, request.params.id, assignedTo);
+    response.json(result);
+  } catch (error) {
+    dataverseFailure(error, response);
+  }
 });
 
 
@@ -1637,14 +1840,11 @@ app.post("/api/quotes/:id/status", auth.requireAuth, async (request, response) =
   response.json({ id: quote.id, status: quote.status });
 });
 
-app.get("/:role/:page", auth.requirePageAccess, (_request, response) => {
-  response.sendFile(path.join(__dirname, "views", "app.html"));
-});
+app.get("/:role/:page", auth.requirePageAccess, (_request, response, next) => sendPage(response, next, path.join(__dirname, "views", "app.html")));
 
-// SPA fallback (last middleware, after every route): client-side routes of
-// the attached Dataverse SPA render index.html on refresh so page-reloads keep
-// working, while mistyped /api paths still fall through to Express's 404.
-app.use(spaFallback);
+// Unknown pages 404 instead of falling back to the old single-file SPA, so a mistyped
+// route is visible rather than silently opening a different app.
+app.use(pageFallback);
 
 function fieldValue(field) {
   if (!field) return "";

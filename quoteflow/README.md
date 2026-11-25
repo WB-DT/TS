@@ -1,6 +1,14 @@
-# QuoteFlow GitHub Pages
+# QuoteFlow
 
-QuoteFlow is packaged as one static `index.html` file. The browser authenticates directly with Microsoft Entra ID through MSAL Browser and calls the Microsoft Dataverse Web API with the signed-in employee's delegated permissions.
+QuoteFlow is the Node/Express workspace in this folder. People sign in with Microsoft Entra ID in the browser through MSAL Browser (public client, authorization code + PKCE, no client secret), and the app then runs OData queries against the client's Dataverse environment to read the live Quote Log (`cr714_quotelog`) and MDM Log (`cr714_mdmlog`). Dataverse still enforces each employee's security role.
+
+- Sign-in, sync, write-back and the full field mapping: [docs/dataverse-mapping.md](docs/dataverse-mapping.md)
+- Configuration: `DATAVERSE_URL`, `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` (defaults are the original org and app registration). The Entra app registration needs `<app origin>/login` as a redirect URI on its single-page application platform.
+- The original single-file `index.html` from the GitHub Pages build is kept as a reference; `/` now opens the Express app and redirects to `/login`.
+
+## Original standalone build
+
+The notes below describe the first, single-file `index.html` version, which authenticated directly with Microsoft Entra ID through MSAL Browser and called the Microsoft Dataverse Web API with the signed-in employee's delegated permissions.
 
 ## Included functionality
 

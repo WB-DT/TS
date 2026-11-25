@@ -17,8 +17,8 @@ const iconMarkup = {
 };
 
 const pageCopy = {
-     "/manager/request-log": ["Request log", "The team's Quote Log and MDM Log, imported from Dataverse."],
-  "/qualifier/request-log": ["Request log", "The team's Quote Log and MDM Log, imported from Dataverse."],
+  "/manager/request-log": ["Request log", "The team's Quote Log and MDM Log, read live from Dataverse."],
+  "/qualifier/request-log": ["Request log", "The team's Quote Log and MDM Log, read live from Dataverse."],
    "/margin/locked-prices": ["Locked prices", "Prices locked into customer accounts. Import CSV files and review margins."],
   "/margin/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
   "/qualifier/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
@@ -124,7 +124,7 @@ function renderMetrics(quotes, reports) {
   const edited = (reports.ocrAccuracy || []).reduce((sum, row) => sum + Number(row.edited_field_count || 0), 0);
   const extracted = (reports.ocrAccuracy || []).reduce((sum, row) => sum + Number(row.extracted_field_count || 0), 0);
   const editedPercent = extracted ? `${(edited * 100 / extracted).toFixed(1)}%` : "0.0%";
-  return `<div class="metric-grid">${metricCard("Quotes tracked", String(cycleRows.length), "All seeded and submitted quotes")}${metricCard("Avg. screening", `${average("screening_seconds")} d`, "Time recorded in screening", "info")}${metricCard("Approved decisions", String(approvalCount), "Recorded final outcomes", "success")}${metricCard("OCR fields edited", editedPercent, `${edited} of ${extracted} extracted fields`, "review")}</div>${quoteTable(quotes, "Recent quote activity")}`;
+  return `<div class="metric-grid">${metricCard("Quotes tracked", String(cycleRows.length), "All submitted quotes")}${metricCard("Avg. screening", `${average("screening_seconds")} d`, "Time recorded in screening", "info")}${metricCard("Approved decisions", String(approvalCount), "Recorded final outcomes", "success")}${metricCard("OCR fields edited", editedPercent, `${edited} of ${extracted} extracted fields`, "review")}</div>${quoteTable(quotes, "Recent quote activity")}`;
 }
 
 function renderWorkload(workload) {
@@ -330,7 +330,47 @@ function renderReassignments(reassignments, quoters) {
   </section>`;
 }
 
-function renderRoleHome(role, quotes, user, reports, reassignments = [], quoters = []) {
+// [Dataverse map] cr714_quotelog summary, brought over from the original single-page
+// QuoteFlow dashboard (total, needs assignment, awaiting approval, pipeline value).
+function renderDataverseOverview() {
+  return `<section class="items-section" id="dv-overview" aria-label="Live Dataverse quote log">
+    <div class="items-heading"><div><h2>Live Dataverse quote log</h2><p class="section-description" id="dv-overview-meta">Reading cr714_quotelog…</p></div><span class="item-count">DATAVERSE</span></div>
+    <div class="metric-grid" id="dv-overview-cards"></div>
+    <div class="table-scroll"><table><caption class="visually-hidden">Newest Dataverse quote log rows</caption><thead><tr><th scope="col">Quote</th><th scope="col">Company</th><th scope="col">Assigned to</th><th scope="col">Stage</th><th scope="col">Value</th></tr></thead><tbody id="dv-overview-rows"></tbody></table></div>
+  </section>`;
+}
+
+async function loadDataverseOverview() {
+  const cards = document.getElementById("dv-overview-cards");
+  const meta = document.getElementById("dv-overview-meta");
+  const body = document.getElementById("dv-overview-rows");
+  if (!cards || !meta || !body) return;
+  const money = (value) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(Number(value) || 0);
+  try {
+    const request = window.QuoteFlowMsal?.fetchWithRefresh || fetch;
+    const response = await request("/api/dataverse/overview", { headers: { Accept: "application/json" } });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "The Dataverse quote log could not be read.");
+    meta.textContent = `${payload.total} Quote Log rows · last read ${payload.syncedAt ? new Date(payload.syncedAt).toLocaleTimeString("en-US") : "never"} · ${payload.baseUrl || ""}`;
+    cards.innerHTML = [
+      metricCard("Total quotes", String(payload.total || 0), "Rows in cr714_quotelog"),
+      metricCard("Needs assignment", String(payload.needsAssignment || 0), "Submitted or ready to assign", payload.needsAssignment ? "review" : "info"),
+      metricCard("Awaiting approval", String(payload.awaitingApproval || 0), "ASAP manager approval pending", payload.awaitingApproval ? "review" : "info"),
+      metricCard("Pipeline value", money(payload.pipelineValue), "Sum of cr714_wbsellpricetotal"),
+    ].join("");
+    body.innerHTML = (payload.recent || []).map((row) => `<tr>
+      <td><strong class="quote-id">${escapeHtml(row.quoteNumber)}</strong></td>
+      <td>${escapeHtml(row.companyName || "—")}</td>
+      <td>${escapeHtml(row.assignedTo || "Unassigned")}</td>
+      <td>${statusPill(row.stage)}</td>
+      <td>${money(row.value)}</td>
+    </tr>`).join("") || '<tr><td colspan="5">No Dataverse rows yet. Open the request log and sync.</td></tr>';
+  } catch (error) {
+    meta.textContent = error.message;
+  }
+}
+
+function renderRoleHome(role, quotes, user, reports, reassignments = [], quoters = [], dataverse = null) {
   const mine = quotes.filter((quote) => quote.assignedQuoterId === user.id || quote.submittedBy === user.email);
   const open = quotes.filter(HOME_FILTERS.open);
   const dueToday = open.filter(HOME_FILTERS.dueToday);
@@ -402,10 +442,11 @@ function renderRoleHome(role, quotes, user, reports, reassignments = [], quoters
   <div class="metric-grid" id="home-cards">${cards.join("")}</div>
   ${role === "Manager" ? renderReassignments(reassignments, quoters) : ""}
   <section class="items-section" id="home-list-section" aria-label="Filtered list" hidden><div class="items-heading"><div><h2 id="home-list-title">Quotes</h2></div></div><div class="table-scroll"><table><caption class="visually-hidden">Filtered quotes</caption><thead><tr><th scope="col">Quote</th><th scope="col">Company</th><th scope="col">Priority</th><th scope="col">Status</th></tr></thead><tbody id="home-list-body"></tbody></table></div></section>
+  ${dataverse?.configured && dataverse?.signedIn ? renderDataverseOverview() : ""}
   <div class="quote-detail-panel" id="quote-detail-panel" hidden></div>`;
 }
 
-function bindRoleHome(quotes) {
+function bindRoleHome(quotes, dataverse = null) {
   const panel = document.getElementById("quote-detail-panel");
   const openRow = (container, event) => {
     const row = event.target.closest(".quote-log-row");
@@ -429,6 +470,7 @@ function bindRoleHome(quotes) {
     listSection.scrollIntoView({ behavior: "smooth", block: "start" });
   });
   document.getElementById("home-list-body").addEventListener("click", (event) => openRow(null, event));
+  if (dataverse?.configured && dataverse?.signedIn) loadDataverseOverview();
 }
 
 function screeningChecklistRow(label, ok, hint) {
@@ -848,7 +890,7 @@ function bindSendToCustomerPanel(panel) {
   });
 }
 
-function renderPageContent(page, quotes, user, reports, quoters, branding, reassignments = []) {
+function renderPageContent(page, quotes, user, reports, quoters, branding, reassignments = [], dataverse = null) {
   const [title, description] = pageCopy[page.href];
   const pageContent = document.querySelector("#page-content");
   pageContent.innerHTML = `<section class="intro" aria-labelledby="page-title"><div><p class="eyebrow">${escapeHtml(user.role.toUpperCase())} WORKSPACE</p><h1 id="page-title">${escapeHtml(title)}</h1><p class="intro-copy">${escapeHtml(description)}</p></div><span class="page-index">${escapeHtml(user.role.toUpperCase())}</span></section><div id="page-body"></div><footer class="footer"><span>QUOTEFLOW DOCUMENT WORKSPACE</span><span>${escapeHtml(user.role.toUpperCase())} VIEW</span></footer>`;
@@ -901,14 +943,23 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
    if (page.href.endsWith("/request-log")) {
     pageBody.innerHTML = `
       <div id="request-log-root">
-        <section class="request-section items-section" aria-labelledby="rl-import-title">
-          <div class="items-heading"><div><h2 class="section-title" id="rl-import-title">Import the Dataverse export</h2><p class="section-description">Upload the .xlsx export of the Quote Log, the MDM Log, or both. New rows are added and changed rows are updated. Nothing is ever deleted.</p></div></div>
-          <div class="rl-import-row">
-            <label class="visually-hidden" for="rl-file">Dataverse export (.xlsx)</label>
-            <input id="rl-file" type="file" accept=".xlsx" />
-            <button class="settings-save-button" id="rl-import" type="button">Import</button>
-            <p class="request-feedback" id="rl-import-status" role="status" aria-live="polite"></p>
+        <section class="request-section items-section" aria-labelledby="rl-sync-title">
+          <div class="items-heading"><div><h2 class="section-title" id="rl-sync-title">Dataverse</h2><p class="section-description" id="rl-sync-meta">Checking the Dataverse connection…</p></div><span class="item-count">LIVE DATA</span></div>
+          <div class="rl-sync-row">
+            <button class="settings-save-button" id="rl-sync" type="button" hidden>Sync from Dataverse</button>
+            <button class="secondary-button" id="rl-export" type="button">Export CSV</button>
+            <p class="request-feedback" id="rl-sync-status" role="status" aria-live="polite"></p>
           </div>
+          <details class="rl-import-fallback">
+            <summary>Import an .xlsx export instead</summary>
+            <p class="section-description">Fallback for when browser sign-in is not available. New rows are added and changed rows are updated. Nothing is ever deleted.</p>
+            <div class="rl-import-row">
+              <label class="visually-hidden" for="rl-file">Dataverse export (.xlsx)</label>
+              <input id="rl-file" type="file" accept=".xlsx" />
+              <button class="secondary-button" id="rl-import" type="button">Import</button>
+              <p class="request-feedback" id="rl-import-status" role="status" aria-live="polite"></p>
+            </div>
+          </details>
         </section>
         <div class="rl-tabs" role="tablist" aria-label="Log">
           <button type="button" role="tab" aria-selected="true" data-log-tab="quote">Quote Log</button>
@@ -1020,8 +1071,8 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
     "/reviser/home": "Reviser",
   };
   if (homePages[page.href]) {
-    pageBody.innerHTML = renderRoleHome(homePages[page.href], quotes, user, reports, reassignments, quoters);
-    bindRoleHome(quotes);
+    pageBody.innerHTML = renderRoleHome(homePages[page.href], quotes, user, reports, reassignments, quoters, dataverse);
+    bindRoleHome(quotes, dataverse);
     return;
   }
 
@@ -1161,7 +1212,7 @@ async function loadWorkspace() {
     }
 
     renderNavigation(workspace.user, workspace.navigation, path, workspace.branding);
-    renderPageContent(page, workspace.quotes, workspace.user, workspace.reports, workspace.quoters, workspace.branding, workspace.reassignments);
+    renderPageContent(page, workspace.quotes, workspace.user, workspace.reports, workspace.quoters, workspace.branding, workspace.reassignments, workspace.dataverse);
     document.body.dataset.workspaceReady = "true";
     document.body.classList.remove("auth-loading");
     document.dispatchEvent(new Event("workspace:ready"));
@@ -1171,6 +1222,8 @@ async function loadWorkspace() {
       button.disabled = true;
       try {
         await fetch("/api/auth/logout", { method: "POST" });
+        // Also drop the browser's Microsoft cache, or the next visit reuses it silently.
+        await window.QuoteFlowMsal?.clear?.();
         window.location.assign("/login");
       } catch {
         button.disabled = false;

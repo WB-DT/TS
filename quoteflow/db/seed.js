@@ -261,7 +261,21 @@ function getActor(status, previousStatus, usersForQuote) {
   return usersForQuote.quoter;
 }
 
-async function seed(knex) {
+// QuoteFlow runs on the client's Dataverse Quote Log and MDM Log. The made-up
+// sample dataset below (accounts, PPLs, sales managers, 30 quotes and their
+// files) is for offline development only, so `seed` skips it unless
+// SEED_DEMO_DATA=true. Settings, sign-in accounts and the default builder
+// template are always seeded because the app cannot run without them.
+async function seed(knex, options = {}) {
+  await seedSettings(knex);
+  await seedSignInAccounts(knex);
+  await seedTemplate(knex);
+  const withDemoData = options.demo ?? process.env.SEED_DEMO_DATA === "true";
+  if (!withDemoData) return { seeded: false, quotes: 0, quoteFiles: 0 };
+  return seedDemoData(knex);
+}
+
+async function seedSettings(knex) {
   const defaultSettings = {
     company_name: "QuoteFlow",
     logo_path: "/quoteflow-logo.svg",
@@ -271,7 +285,10 @@ async function seed(knex) {
     const existing = await knex("settings").where({ key }).first();
     if (!existing) await knex("settings").insert({ key, value });
   }
+}
 
+// Sign-in accounts. Password checks stay in auth.js, unchanged.
+async function seedSignInAccounts(knex) {
   for (const user of users) {
     const existing = await knex("users").where({ id: user.id }).first("id");
     if (!existing) await knex("users").insert(user);
@@ -280,7 +297,10 @@ async function seed(knex) {
       if (!existingRole) await knex("user_roles").insert({ user_id: user.id, role });
     }
   }
+}
 
+// Made-up sample dataset. Only seeded when SEED_DEMO_DATA=true (see seed above).
+async function seedDemoData(knex) {
   const accounts = accountNames.map(([account_number, account_name]) => ({
     id: accountId(account_number),
     account_number,
@@ -316,51 +336,6 @@ async function seed(knex) {
   if (Number(count) > 0) {
     await attachSampleFiles(knex);
     return { seeded: false, quotes: 0 };
-  }
-
-  // Seed the "Extended Prices – Qty & GP Margin" template into the builder tables.
-  const existingTemplate = await knex("templates").where({ name: "Extended Prices – Qty & GP Margin" }).first();
-  if (!existingTemplate) {
-    const templateColumns = [
-      ["Line", "A", "calculated", "lineNumber", "rowIndex + 1", false],
-      ["Competitor Item #", "B", "ocr", "competitorItemNumber", null, false],
-      ["Description", "C", "ocr", "description", null, false],
-      ["Competitor UOM", "D", "ocr", "competitorUom", null, false],
-      ["Competitor Price", "E", "ocr", "competitorPrice", null, false],
-      ["Qty", "F", "ocr", "quantity", null, false],
-      ["Extended Competitor", "G", "calculated", "extendedCompetitor", "competitorPrice * quantity", false],
-      ["Our UOM", "H", "crossReference", "ourUom", null, false],
-      ["Our Price (Matched UOM)", "I", "calculated", "ourPriceMatched", "(ourSellPrice / ourCountPerUom) * competitorCountPerUom", false],
-      ["Extended Ours", "J", "calculated", "extendedOurs", "ourPriceMatched * quantity", false],
-      ["Savings %", "K", "calculated", "savingsPercent", "(competitorPrice - ourPriceMatched) / competitorPrice", false],
-      ["Savings $", "L", "calculated", "savingsDollars", "extendedCompetitor - extendedOurs", false],
-      ["Cost", "M", "priceReport", "cost", null, true],
-      ["Extended Cost", "N", "calculated", "extendedCost", "(extendedOurs / ourSellPrice) * cost", true],
-      ["Margin", "O", "calculated", "margin", "(sell - cost) / sell", true],
-      ["Target Margin", "P", "quoter", "targetMargin", null, true],
-      ["Price at Target Margin", "Q", "calculated", "priceAtTargetMargin", "ROUNDUP(cost / (1 - targetMargin), 2)", true],
-      ["Pricing Method", "R", "priceReport", "pricingMethod", null, true],
-      ["Final Price", "S", "quoter", "finalPrice", null, false],
-      ["Note", "T", "quoter", "note", null, false],
-    ];
-    const templateId = randomUUID();
-    await knex("templates").insert({ id: templateId, name: "Extended Prices – Qty & GP Margin", active: true, created_by_id: "manager" });
-    const versionId = randomUUID();
-    await knex("template_versions").insert({ id: versionId, template_id: templateId, version: 1, file_name: "extended-prices-qty-gp.xlsx", published_at: Math.floor(Date.now() / 1000) });
-    for (let index = 0; index < templateColumns.length; index += 1) {
-      const [header, excelColumn, source, fieldKey, formula, internalOnly] = templateColumns[index];
-      await knex("template_columns").insert({
-        id: randomUUID(),
-        version_id: versionId,
-        position: index + 1,
-        header,
-        excel_column: excelColumn,
-        source,
-        field_key: fieldKey,
-        formula,
-        internal_only: internalOnly,
-      });
-    }
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -529,6 +504,54 @@ async function seed(knex) {
 
   await attachSampleFiles(knex);
   return { seeded: true, quotes: 30, quoteFiles: 30 };
+}
+
+// The default builder template is configuration, not demo data, so it is always seeded.
+async function seedTemplate(knex) {
+  // Seed the "Extended Prices – Qty & GP Margin" template into the builder tables.
+  const existingTemplate = await knex("templates").where({ name: "Extended Prices – Qty & GP Margin" }).first();
+  if (!existingTemplate) {
+    const templateColumns = [
+      ["Line", "A", "calculated", "lineNumber", "rowIndex + 1", false],
+      ["Competitor Item #", "B", "ocr", "competitorItemNumber", null, false],
+      ["Description", "C", "ocr", "description", null, false],
+      ["Competitor UOM", "D", "ocr", "competitorUom", null, false],
+      ["Competitor Price", "E", "ocr", "competitorPrice", null, false],
+      ["Qty", "F", "ocr", "quantity", null, false],
+      ["Extended Competitor", "G", "calculated", "extendedCompetitor", "competitorPrice * quantity", false],
+      ["Our UOM", "H", "crossReference", "ourUom", null, false],
+      ["Our Price (Matched UOM)", "I", "calculated", "ourPriceMatched", "(ourSellPrice / ourCountPerUom) * competitorCountPerUom", false],
+      ["Extended Ours", "J", "calculated", "extendedOurs", "ourPriceMatched * quantity", false],
+      ["Savings %", "K", "calculated", "savingsPercent", "(competitorPrice - ourPriceMatched) / competitorPrice", false],
+      ["Savings $", "L", "calculated", "savingsDollars", "extendedCompetitor - extendedOurs", false],
+      ["Cost", "M", "priceReport", "cost", null, true],
+      ["Extended Cost", "N", "calculated", "extendedCost", "(extendedOurs / ourSellPrice) * cost", true],
+      ["Margin", "O", "calculated", "margin", "(sell - cost) / sell", true],
+      ["Target Margin", "P", "quoter", "targetMargin", null, true],
+      ["Price at Target Margin", "Q", "calculated", "priceAtTargetMargin", "ROUNDUP(cost / (1 - targetMargin), 2)", true],
+      ["Pricing Method", "R", "priceReport", "pricingMethod", null, true],
+      ["Final Price", "S", "quoter", "finalPrice", null, false],
+      ["Note", "T", "quoter", "note", null, false],
+    ];
+    const templateId = randomUUID();
+    await knex("templates").insert({ id: templateId, name: "Extended Prices – Qty & GP Margin", active: true, created_by_id: "manager" });
+    const versionId = randomUUID();
+    await knex("template_versions").insert({ id: versionId, template_id: templateId, version: 1, file_name: "extended-prices-qty-gp.xlsx", published_at: Math.floor(Date.now() / 1000) });
+    for (let index = 0; index < templateColumns.length; index += 1) {
+      const [header, excelColumn, source, fieldKey, formula, internalOnly] = templateColumns[index];
+      await knex("template_columns").insert({
+        id: randomUUID(),
+        version_id: versionId,
+        position: index + 1,
+        header,
+        excel_column: excelColumn,
+        source,
+        field_key: fieldKey,
+        formula,
+        internal_only: internalOnly,
+      });
+    }
+  }
 }
 
 module.exports = { seed, users, accountNames, statusNames, salesManagers, pplNames };

@@ -28,7 +28,7 @@ test("database migrations, reporting, workflow, OCR edits, and duplicates", asyn
     await knex.raw("PRAGMA journal_mode = WAL");
     await knex.migrate.latest({ directory: path.join(__dirname, "..", "db", "migrations") });
     await installViews(knex);
-    await seed(knex);
+    await seed(knex, { demo: true });
     const repositories = createRepositories(knex);
     const branding = await repositories.settings.get();
     assert.equal(branding.company_name, "QuoteFlow");
@@ -276,7 +276,7 @@ test("user management, first-manager setup, and audit logging", async () => {
     await knex.raw("PRAGMA journal_mode = WAL");
     await knex.migrate.latest({ directory: path.join(__dirname, "..", "db", "migrations") });
     await installViews(knex);
-    await seed(knex);
+    await seed(knex, { demo: true });
     const repositories = createRepositories(knex);
 
     const manager = await repositories.users.findActiveByEmail("manager@demo.com");
@@ -398,7 +398,7 @@ test("approval is a permission with separation of duties", async () => {
     await knex.raw("PRAGMA journal_mode = WAL");
     await knex.migrate.latest({ directory: path.join(__dirname, "..", "db", "migrations") });
     await installViews(knex);
-    await seed(knex);
+    await seed(knex, { demo: true });
     const repositories = createRepositories(knex);
 
     const manager = await repositories.users.findActiveByEmail("manager@demo.com");

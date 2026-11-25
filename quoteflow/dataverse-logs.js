@@ -131,7 +131,9 @@ function parseDataverseExport(buffer) {
   return found;
 }
 
-module.exports = { LOGS, parseDataverseExport, stageOf };
+// Exported so the live Dataverse sync (dataverse.js) hashes rows exactly the same way
+// the .xlsx import does, which keeps "has this row changed?" honest across both paths.
+module.exports = { LOGS, parseDataverseExport, rowHash, stageOf };
 
 // Run directly to check an export without starting the app:
 //   node dataverse-logs.js sample-files/your-export.xlsx
