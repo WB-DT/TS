@@ -19,16 +19,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { ASSETS } = require('./pages-assets');
 
 const APP_DIR = path.resolve(__dirname, '..');
 const PUBLIC_DIR = path.join(APP_DIR, 'public');
 const PAGES_DIR = path.join(APP_DIR, 'pages');
 const REMOTE = process.env.PAGES_REMOTE || 'https://github.com/WB-DT/TS.git';
 const BRANCH = process.env.PAGES_BRANCH || 'quoteflow-pages';
-
-// Authored in public/ and copied into pages/. logo-mark-light.svg is left out:
-// it belongs to the Express login page, which GitHub Pages cannot serve.
-const ASSETS = ['styles.css', 'tokens.css', 'logo-mark.svg', 'quoteflow-logo.svg'];
 
 // Published but vendored: restored from node_modules when pages/ is missing it.
 const MSAL = {
