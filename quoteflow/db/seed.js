@@ -164,7 +164,9 @@ function databaseLine(values, fileId, lineNumber, edited) {
 }
 
 const SAMPLE_FILES_DIRECTORY = path.join(__dirname, "..", "sample-files");
-const QUOTE_UPLOADS_DIRECTORY = path.join(__dirname, "..", "uploads", "quotes");
+// Root of the uploads tree; seeded sample PDFs land under <root>/quotes. Tests pass
+// their own temporary root so a test run never leaves files in the repository.
+const DEFAULT_UPLOADS_DIRECTORY = path.join(__dirname, "..", "uploads");
 
 function escapePdfText(value) {
   return String(value)
@@ -214,12 +216,12 @@ function buildSampleInvoicePdf({ accountNumber, accountName, vendor, lines }) {
   return Buffer.from(pdf, "utf8");
 }
 
-async function ensureSampleFiles() {
-  await fs.mkdir(SAMPLE_FILES_DIRECTORY, { recursive: true });
+async function ensureSampleFiles(directory = SAMPLE_FILES_DIRECTORY) {
+  await fs.mkdir(directory, { recursive: true });
   const sampleNames = accountNames.map(([accountNumber, accountName]) => `${accountNumber}-${accountName}.pdf`);
   for (let index = 0; index < accountNames.length; index += 1) {
     const [accountNumber, accountName] = accountNames[index];
-    const filePath = path.join(SAMPLE_FILES_DIRECTORY, sampleNames[index]);
+    const filePath = path.join(directory, sampleNames[index]);
     try {
       await fs.access(filePath);
     } catch {
@@ -236,17 +238,18 @@ async function ensureSampleFiles() {
 }
 
 // Seeded quotes need a real file on disk so extraction and preview work.
-async function attachSampleFiles(knex) {
+async function attachSampleFiles(knex, uploadsDirectory = DEFAULT_UPLOADS_DIRECTORY, sampleFilesDirectory = SAMPLE_FILES_DIRECTORY) {
   const missing = await knex("quote_files").whereNull("storage_key").select("id", "file_name");
   if (!missing.length) return 0;
-  const sampleNames = await ensureSampleFiles();
-  await fs.mkdir(QUOTE_UPLOADS_DIRECTORY, { recursive: true });
+  const quotesDirectory = path.join(uploadsDirectory, "quotes");
+  const sampleNames = await ensureSampleFiles(sampleFilesDirectory);
+  await fs.mkdir(quotesDirectory, { recursive: true });
   const fallback = sampleNames[0];
   for (const row of missing) {
     const sampleName = sampleNames.includes(row.file_name) ? row.file_name : fallback;
-    const buffer = await fs.readFile(path.join(SAMPLE_FILES_DIRECTORY, sampleName));
+    const buffer = await fs.readFile(path.join(sampleFilesDirectory, sampleName));
     const storageFile = `${row.id}-${row.file_name}`;
-    await fs.writeFile(path.join(QUOTE_UPLOADS_DIRECTORY, storageFile), buffer);
+    await fs.writeFile(path.join(quotesDirectory, storageFile), buffer);
     await knex("quote_files").where({ id: row.id }).update({ storage_key: `uploads/quotes/${storageFile}` });
   }
   return missing.length;
@@ -272,7 +275,7 @@ async function seed(knex, options = {}) {
   await seedTemplate(knex);
   const withDemoData = options.demo ?? process.env.SEED_DEMO_DATA === "true";
   if (!withDemoData) return { seeded: false, quotes: 0, quoteFiles: 0 };
-  return seedDemoData(knex);
+  return seedDemoData(knex, options);
 }
 
 async function seedSettings(knex) {
@@ -300,7 +303,7 @@ async function seedSignInAccounts(knex) {
 }
 
 // Made-up sample dataset. Only seeded when SEED_DEMO_DATA=true (see seed above).
-async function seedDemoData(knex) {
+async function seedDemoData(knex, options = {}) {
   const accounts = accountNames.map(([account_number, account_name]) => ({
     id: accountId(account_number),
     account_number,
@@ -334,7 +337,7 @@ async function seedDemoData(knex) {
 
   const [{ count }] = await knex("quotes").count({ count: "id" });
   if (Number(count) > 0) {
-    await attachSampleFiles(knex);
+    await attachSampleFiles(knex, options.uploadsDir, options.sampleFilesDir);
     return { seeded: false, quotes: 0 };
   }
 
@@ -502,7 +505,7 @@ async function seedDemoData(knex) {
     }
   });
 
-  await attachSampleFiles(knex);
+  await attachSampleFiles(knex, options.uploadsDir, options.sampleFilesDir);
   return { seeded: true, quotes: 30, quoteFiles: 30 };
 }
 

@@ -12,6 +12,8 @@
  *   node scripts/prune-uploads.js                list what would be removed
  *   node scripts/prune-uploads.js --delete       remove it
  *   node scripts/prune-uploads.js --days 30      override UPLOAD_RETENTION_DAYS
+ *   node scripts/prune-uploads.js --delete --days 0
+ *                                               everything unreferenced, however new
  *
  * The default is dry-run: nothing is deleted without --delete.
  */
@@ -27,7 +29,10 @@ function daysArgument() {
   const index = process.argv.indexOf('--days');
   if (index === -1) return config.uploads.retentionDays;
   const days = Number.parseInt(process.argv[index + 1], 10);
-  if (!Number.isFinite(days) || days < 1) throw new Error('--days needs a whole number of days, for example --days 30.');
+  // 0 means "no age floor": every file with no database row, including today's.
+  // That is for cleaning up after a test run or a bad import, not for a live folder
+  // where an upload's row may still be committing.
+  if (!Number.isFinite(days) || days < 0) throw new Error('--days needs a whole number of days, for example --days 30 (0 for no age floor).');
   return days;
 }
 

@@ -6,7 +6,7 @@ const test = require("node:test");
 const knexFactory = require("knex");
 const createRepositories = require("../db/repositories");
 const { installViews } = require("../db/views");
-const { seed, statusNames, users: seedUsers } = require("../db/seed");
+const { seed, statusNames, users: seedUsers, accountNames } = require("../db/seed");
 
 const makeField = (value, confidence = 0.94) => ({
   value,
@@ -28,7 +28,8 @@ test("database migrations, reporting, workflow, OCR edits, and duplicates", asyn
     await knex.raw("PRAGMA journal_mode = WAL");
     await knex.migrate.latest({ directory: path.join(__dirname, "..", "db", "migrations") });
     await installViews(knex);
-    await seed(knex, { demo: true });
+    // Sample files go to this test's own folder, never into the repository's uploads/ or sample-files/.
+    await seed(knex, { demo: true, uploadsDir: path.join(directory, "uploads"), sampleFilesDir: path.join(directory, "sample-files") });
     const repositories = createRepositories(knex);
     const branding = await repositories.settings.get();
     assert.equal(branding.company_name, "QuoteFlow");
@@ -48,13 +49,16 @@ test("database migrations, reporting, workflow, OCR edits, and duplicates", asyn
     const quoteDates = await knex("quotes").min({ oldest: "updated_at" }).max({ newest: "updated_at" }).first();
     assert.ok(Number(quoteDates.newest) - Number(quoteDates.oldest) >= 58 * 86400);
     assert.equal(await countFor("quote_files"), 30);
+    assert.equal((await fs.readdir(path.join(directory, "uploads", "quotes"))).length, 30);
     // Seeded demo quotes each get a real sample file on disk for extraction.
     const seededWithoutStorage = await knex("quote_files").whereNull("storage_key").count({ count: "id" }).first();
     assert.equal(Number(seededWithoutStorage.count), 0);
     const seededFile = await knex("quote_files").whereNotNull("storage_key").first();
     assert.ok(seededFile.storage_key.startsWith("uploads/quotes/"));
-    await fs.stat(path.join(__dirname, "..", seededFile.storage_key));
-    const sampleDirectory = path.join(__dirname, "..", "sample-files");
+    // storage_key is relative to the uploads root, which for this test is temporary.
+    await fs.stat(path.join(directory, seededFile.storage_key));
+    const sampleDirectory = path.join(directory, "sample-files");
+    assert.equal((await fs.readdir(sampleDirectory)).length, accountNames.length);
     assert.ok((await fs.readdir(sampleDirectory)).some((name) => name.endsWith(".pdf")));
     assert.equal(await countFor("line_items"), 60);
     assert.equal(await countFor("quote_status_history"), 141);
@@ -277,7 +281,8 @@ test("user management, first-manager setup, and audit logging", async () => {
     await knex.raw("PRAGMA journal_mode = WAL");
     await knex.migrate.latest({ directory: path.join(__dirname, "..", "db", "migrations") });
     await installViews(knex);
-    await seed(knex, { demo: true });
+    // Sample files go to this test's own folder, never into the repository's uploads/ or sample-files/.
+    await seed(knex, { demo: true, uploadsDir: path.join(directory, "uploads"), sampleFilesDir: path.join(directory, "sample-files") });
     const repositories = createRepositories(knex);
 
     const manager = await repositories.users.findActiveByEmail("manager@demo.com");
@@ -399,7 +404,8 @@ test("approval is a permission with separation of duties", async () => {
     await knex.raw("PRAGMA journal_mode = WAL");
     await knex.migrate.latest({ directory: path.join(__dirname, "..", "db", "migrations") });
     await installViews(knex);
-    await seed(knex, { demo: true });
+    // Sample files go to this test's own folder, never into the repository's uploads/ or sample-files/.
+    await seed(knex, { demo: true, uploadsDir: path.join(directory, "uploads"), sampleFilesDir: path.join(directory, "sample-files") });
     const repositories = createRepositories(knex);
 
     const manager = await repositories.users.findActiveByEmail("manager@demo.com");
