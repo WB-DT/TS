@@ -6,6 +6,17 @@ QuoteFlow is the Node/Express workspace in this folder. People sign in with Micr
 - Configuration: `DATAVERSE_URL`, `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` (defaults are the original org and app registration). The Entra app registration needs `<app origin>/login` as a redirect URI on its single-page application platform.
 - The original single-file `index.html` from the GitHub Pages build is kept as a reference; `/` now opens the Express app and redirects to `/login`.
 
+## Static GitHub Pages build
+
+`pages/` is the browser-only build served at https://wb-dt.github.io/TS/ (MSAL plus direct Dataverse calls, no Node). It cannot read outside `pages/`, so `styles.css`, `tokens.css` and the logos there are copies of the ones in `public/`. Edit the `public/` files, then run:
+
+```bash
+npm run pages:sync      # copy styles.css, tokens.css and the logos into pages/
+npm run pages:publish   # copy, then push the result to the quoteflow-pages branch
+```
+
+`pages:publish` only pushes when the result differs from the branch tip, prints the changed files and the new commit, and leaves the Pages-only files (`.nojekyll`, `404.html`, `README.md`, `FIX-JEKYLL-PAGES.md`, `.gitignore`) alone. Use `node scripts/publish-pages.js --dry-run` to see what would change without pushing. `PAGES_REMOTE` and `PAGES_BRANCH` override the default remote and branch.
+
 ## Original standalone build
 
 The notes below describe the first, single-file `index.html` version, which authenticated directly with Microsoft Entra ID through MSAL Browser and called the Microsoft Dataverse Web API with the signed-in employee's delegated permissions.

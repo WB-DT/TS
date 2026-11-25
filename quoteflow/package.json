@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "db:setup": "node db/cli.js",
+    "pages:sync": "node scripts/publish-pages.js --copy-only",
+    "pages:publish": "node scripts/publish-pages.js",
     "test": "node --test"
   },
   "repository": {
