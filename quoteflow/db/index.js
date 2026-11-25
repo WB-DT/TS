@@ -4,6 +4,8 @@ const path = require("node:path");
 const knexFactory = require("knex");
 const configuration = require("./config");
 const createRepositories = require("./repositories");
+const { config } = require("../config");
+const { logger } = require("../logger");
 const { installViews } = require("./views");
 const { seed } = require("./seed");
 
@@ -20,8 +22,8 @@ async function initialize() {
   await connection.migrate.latest({ directory: path.join(__dirname, "migrations") });
   await installViews(connection);
   await seed(connection);
-  const granted = await repositories.users.applyManagerEmails(process.env.MANAGER_EMAILS);
-  if (granted.length) console.log(`Manager role granted via MANAGER_EMAILS: ${granted.join(", ")}`);
+  const granted = await repositories.users.applyManagerEmails(config.managerEmails);
+  if (granted.length) logger.info("Manager role granted via MANAGER_EMAILS", { emails: granted.join(", ") });
   initialized = true;
 }
 

@@ -1,6 +1,9 @@
 const crypto = require("node:crypto");
 const session = require("express-session");
 const database = require("./db");
+const pages = require("./pages.config");
+const { config } = require("./config");
+const { KnexSessionStore } = require("./session-store");
 
 const demoPasswords = new Map([
   ["qualifier1@demo.com", "demo"],
@@ -22,52 +25,24 @@ function registerDemoPassword(email, password = "demo") {
   demoPasswords.set(String(email || "").trim().toLowerCase(), password);
 }
 
-const navigation = {
-  Qualifier: [
-    { label: "Dashboard", href: "/qualifier/home", icon: "dashboard" },
-    { label: "Screening queue", href: "/qualifier/screening-queue", icon: "screening" },
-    { label: "Quote Log", href: "/qualifier/request-log", icon: "list" },
-    { label: "My settings", href: "/qualifier/my-settings", icon: "settings", hidden: true },
-  ],
-  Manager: [
-    { label: "Dashboard", href: "/manager/home", icon: "dashboard" },
-    { label: "Quote Log", href: "/manager/request-log", icon: "list" },
-    { label: "Assignments", href: "/manager/assignments", icon: "assign" },
-    { label: "Approval queue", href: "/manager/approval-queue", icon: "review" },
-    { label: "Reports", href: "/manager/reports", icon: "metrics" },
-    { label: "Settings", href: "/manager/settings", icon: "settings" },
-    { label: "Branding", href: "/manager/branding", icon: "settings" },
-    { label: "My settings", href: "/manager/my-settings", icon: "settings", hidden: true },
-  ],
-  "Margin Manager": [
-    { label: "Locked prices", href: "/margin/locked-prices", icon: "metrics" },
-    { label: "My settings", href: "/margin/my-settings", icon: "settings", hidden: true },
-  ],
-  Quoter: [
-    { label: "Dashboard", href: "/quoter/home", icon: "dashboard" },
-    { label: "My quotes", href: "/quoter/my-quotes", icon: "quotes" },
-    { label: "Quote workspace", href: "/quoter/quote-workspace", icon: "quotes", hidden: true },
-    { label: "My settings", href: "/quoter/my-settings", icon: "settings", hidden: true },
-  ],
-  Reviser: [
-    { label: "Dashboard", href: "/reviser/home", icon: "dashboard" },
-    { label: "Review queue", href: "/reviser/review-queue", icon: "review" },
-    // Shown only when the Reviser holds the Can approve permission (see navigationFor).
-    { label: "Approval queue", href: "/reviser/approval-queue", icon: "review" },
-    { label: "My settings", href: "/reviser/my-settings", icon: "settings", hidden: true },
-  ],
-};
+// The menu is derived from pages.config.js, the one list of pages, so a page
+// cannot ship with a route and no menu entry (or the other way round).
+const navigation = pages.navigationByRole();
+
+const SESSION_MAX_AGE_MS = 8 * 60 * 60 * 1000;
 
 const sessionMiddleware = session({
   name: "quotes.sid",
-  secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex"),
+  secret: config.sessionSecret || crypto.randomBytes(32).toString("hex"),
+  // Sessions live in the database, so a restart keeps people signed in.
+  store: new KnexSessionStore({ knex: database.connection, ttlMs: SESSION_MAX_AGE_MS }),
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 8 * 60 * 60 * 1000,
+    secure: config.isProduction,
+    maxAge: SESSION_MAX_AGE_MS,
   },
 });
 
@@ -93,12 +68,9 @@ function redirectHome(request, response) {
   response.redirect(request.session?.user ? landingPath(request.session.user) : "/login");
 }
 
+/** The routable page for a path, from the shared page manifest (null when there is none). */
 function findPage(pathname) {
-  for (const [role, items] of Object.entries(navigation)) {
-    const page = items.find((item) => item.href === pathname);
-    if (page) return { ...page, role };
-  }
-  return null;
+  return pages.findPage(pathname);
 }
 
 function unauthorized(request, response) {

@@ -23,9 +23,12 @@ const lockedPrices = require("./locked-prices");
 const teamsImport = require("./teams-import");
 const quoteTemplates = require("./templates");
 const database = require("./db");
+const { config, validate } = require("./config");
+const { logger, requestLogger } = require("./logger");
+const pages = require("./pages.config");
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = config.port;
 const brandImageTypes = new Map([
   ["image/png", ".png"],
   ["image/jpeg", ".jpg"],
@@ -91,6 +94,20 @@ const reportUpload = multer({
 
 app.use(express.json({ limit: "2mb" }));
 app.use(auth.sessionMiddleware);
+app.use(requestLogger);
+
+// Liveness and readiness in one: no sign-in, no cache, and it touches the database
+// the app cannot work without. Anything watching the app can poll this.
+app.get("/healthz", async (_request, response) => {
+  try {
+    await database.connection.raw("select 1");
+    response.set("Cache-Control", "no-store").json({ status: "ok", uptime: Math.round(process.uptime()) });
+  } catch (error) {
+    logger.exception("Health check failed", error);
+    response.status(503).set("Cache-Control", "no-store").json({ status: "unavailable" });
+  }
+});
+
 auth.registerAuthRoutes(app);
 require("./microsoft-auth").register(app, { database, safeUser: auth.safeUser, landingPath: auth.landingPath });
 // Sign in with Microsoft in the browser (MSAL) + hand the Dataverse token to the server.
@@ -225,6 +242,8 @@ app.get("/api/workspace", auth.requireAuth, async (request, response) => {
   response.json({
     user,
     navigation: auth.navigationFor(user),
+    // Headings and descriptions for every page, from pages.config.js.
+    pages: pages.pagesByHref(),
     quotes,
     reports,
     quoters,
@@ -270,6 +289,8 @@ app.post("/api/teams-import/preview", auth.requireRole("Manager", "Qualifier"), 
       new: toReview.filter((item) => item.status === "Ready").length,
       alreadyImported: requests.length - toReview.length,
       needsAttention: toReview.filter((item) => item.status !== "Ready").length,
+      // Repeated log rows that share a form response ID, folded into one request.
+      duplicateRows: result.duplicateRows || 0,
     },
     // Only the rows that matter for the preview, capped so a big log stays fast.
     requests: toReview.slice(0, 200),
@@ -2077,8 +2098,7 @@ function normalizeInvoice(document, request) {
 }
 
 async function analyzeBuffer({ buffer, mimetype, originalname, user, template }) {
-  const endpoint = process.env.AZURE_DI_ENDPOINT;
-  const key = process.env.AZURE_DI_KEY;
+  const { endpoint, key } = config.azureDocumentIntelligence;
   if (!endpoint || !key) {
     const error = new Error("Azure Document Intelligence is not configured. Set AZURE_DI_ENDPOINT and AZURE_DI_KEY in .env.");
     error.status = 503;
@@ -2165,24 +2185,26 @@ app.post("/api/quotes/:id/extract", auth.requireRole("Quoter"), async (request, 
   }
 });
 
-app.use((error, _request, response, _next) => {
+app.use((error, request, response, _next) => {
   if (error instanceof multer.MulterError && ["LIMIT_FILE_SIZE", "LIMIT_FILE_COUNT"].includes(error.code)) {
-    console.error("File upload rejected:", error.message);
+    logger.warn("File upload rejected", { id: request.id, code: error.code, message: error.message });
     response.status(413).json({ error: error.code === "LIMIT_FILE_COUNT" ? "Attach no more than 10 files." : "Files must be 20 MB or smaller." });
     return;
   }
   const status = Number(error.status) || 500;
-  if (status >= 500) console.error("Request failed:", error.message);
+  if (status >= 500) logger.exception("Request failed", error, { id: request.id, method: request.method, path: request.path });
   response.status(status).json({
     error: status >= 500 ? "The request could not be completed." : error.message,
   });
 });
 
+for (const warning of validate()) logger.warn("Configuration", { problem: warning });
+
 database.initialize().then(() => {
   app.listen(port, () => {
-    console.log(`QuoteFlow listening on http://localhost:${port}`);
+    logger.info("QuoteFlow listening", { url: `http://localhost:${port}`, env: config.env, store: "database" });
   });
 }).catch((error) => {
-  console.error("Database initialization failed:", error.message);
+  logger.exception("Database initialization failed", error);
   process.exit(1);
 });

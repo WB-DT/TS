@@ -14,13 +14,7 @@
 const { LOGS, rowHash } = require("./dataverse-logs");
 const database = require("./db");
 
-// Public client ids are not secrets: these are the same org and application the
-// original QuoteFlow SPA shipped with. Override with environment variables.
-const DEFAULTS = {
-  baseUrl: "https://org23279050.crm.dynamics.com",
-  tenantId: "9a7c474b-f702-4ae4-a2f9-b72a1e117401",
-  clientId: "afe649b6-9c70-4b1a-8592-78588284c8ee",
-};
+const appConfig = require("./config").config;
 
 const ANNOTATION = "@OData.Community.Display.V1.FormattedValue";
 // Hard budget for one sync, so a huge or slow table can never read (or wait) forever.
@@ -52,11 +46,13 @@ class DataverseError extends Error {
   }
 }
 
+// The org and app registration come from config.js (public identifiers with
+// overrides), so the server has one place to change them.
 function config() {
   return {
-    baseUrl: String(process.env.DATAVERSE_URL || DEFAULTS.baseUrl).replace(/\/+$/, ""),
-    tenantId: String(process.env.AZURE_TENANT_ID || DEFAULTS.tenantId),
-    clientId: String(process.env.AZURE_CLIENT_ID || DEFAULTS.clientId),
+    baseUrl: appConfig.dataverse.url,
+    tenantId: appConfig.dataverse.tenantId,
+    clientId: appConfig.dataverse.clientId,
   };
 }
 

@@ -16,33 +16,15 @@ const iconMarkup = {
   settings: '<svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M10 2.8v2M10 15.2v2M2.8 10h2M15.2 10h2M5 5l1.4 1.4M13.6 13.6 15 15M15 5l-1.4 1.4M6.4 13.6 5 15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
 };
 
-const pageCopy = {
-  "/manager/request-log": ["Request log", "The team's Quote Log and MDM Log, read live from Dataverse."],
-  "/qualifier/request-log": ["Request log", "The team's Quote Log and MDM Log, read live from Dataverse."],
-   "/margin/locked-prices": ["Locked prices", "Prices locked into customer accounts. Import CSV files and review margins."],
-  "/margin/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
-  "/qualifier/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
-"/manager/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
-"/quoter/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
-"/reviser/my-settings": ["My settings", "Adjust how QuoteFlow looks for you."],
-  "/rep/home": ["Dashboard", "Your requests at a glance."],
-  "/rep/new-quote-request": ["New quote request", "Share the opportunity details so a Quoter can prepare a response."],
-  "/rep/my-requests": ["My requests", "Track quote requests submitted from your account."],
-  "/qualifier/home": ["Dashboard", "Your screening queue at a glance."],
-  "/qualifier/screening-queue": ["Screening queue", "Review new submissions."],
-  "/manager/home": ["Dashboard", "Your team's day at a glance."],
-  "/manager/assignments": ["Assignments", "Review work that is ready to assign or already assigned."],
-  "/manager/reports": ["Reports", "Pipeline, cycle time, and coaching reports."],
-  "/manager/templates": ["Templates", "Build and publish quote export templates."],
-  "/manager/settings": ["Settings", "Manage users, roles, and access."],
-  "/quoter/home": ["Dashboard", "Your quote queue at a glance."],
-  "/quoter/my-quotes": ["My quotes", "Track the quotes assigned to your account."],
-  "/quoter/quote-workspace": ["Quote workspace", "Run extraction, manage files, and price the quote."],
-  "/reviser/home": ["Dashboard", "Your review queue at a glance."],
-  "/reviser/review-queue": ["Review queue", "Quotes waiting for your review."],
-  "/manager/approval-queue": ["Approval queue", "Quotes waiting for approval."],
-  "/reviser/approval-queue": ["Approval queue", "Quotes waiting for approval."],
-};
+// Headings and one-line descriptions for every page. They arrive with the
+// workspace payload, which is built from pages.config.js, so the menu and the copy
+// cannot disagree and no page can be added to only one of them.
+let pageCopy = {};
+
+function setPageCatalog(pages) {
+  pageCopy = {};
+  for (const page of pages || []) pageCopy[page.href] = [page.title, page.description];
+}
 
 const statusTone = {
   Submitted: "info",
@@ -164,74 +146,6 @@ function renderBrandingPage(branding) {
     </form>
     <form id="branding-logo-form" hidden></form>
   </section>`;
-}
-
-function quoteLogRow(quote) {
-  const isAsap = quote.priority === "ASAP";
-  const neededBy = quote.neededBy ? new Date(`${quote.neededBy}T00:00:00`).toLocaleDateString("en-US") : "";
-  return `<tr class="quote-log-row" data-quote-id="${escapeHtml(quote.databaseId)}" data-type="${escapeHtml(quote.quoteType)}" data-status="${escapeHtml(quote.status)}" data-priority="${escapeHtml(quote.priority)}" data-quoter="${escapeHtml(quote.assignedQuoterId || "")}" tabindex="0" role="button" aria-label="Open ${escapeHtml(quote.id)}">
-    <td><strong class="quote-id">${escapeHtml(quote.id)}</strong></td>
-    <td><span class="type-badge type-badge--${quote.quoteType === "MDM" ? "mdm" : "quote"}">${escapeHtml(quote.quoteType)}</span></td>
-    <td>${escapeHtml(quote.accountNumber || "—")}</td>
-    <td>${escapeHtml(quote.companyName || quote.accountName || "—")}</td>
-    <td>${escapeHtml(quote.rep || "—")}</td>
-    <td>${escapeHtml(quote.submitterRole || "—")}</td>
-    <td>${isAsap ? `<span class="status-pill status-pill--error">ASAP${neededBy ? ` · ${escapeHtml(neededBy)}` : ""}</span>` : '<span class="status-pill status-pill--info">Standard</span>'}</td>
-    <td>${statusPill(quote.status)}</td>
-    <td>${escapeHtml(quote.assignedToName || "Unassigned")}</td>
-    <td>${escapeHtml(quote.submitted)}</td>
-  </tr>`;
-}
-
-function renderQuoteLog(quotes, quoters) {
-  const statuses = [...new Set(quotes.map((quote) => quote.status))].sort();
-  const rows = quotes.map(quoteLogRow).join("");
-  return `<section class="items-section" aria-label="Quote log">
-    <div class="items-heading"><div><h2>Quote log</h2><p class="section-description" id="quote-log-count">${quotes.length} submissions</p></div><span class="item-count">LIVE DATA</span></div>
-    <div class="log-filters" role="group" aria-label="Filter quote log">
-      <label>Type <select id="filter-type"><option value="">All</option><option>Quote</option><option>MDM</option></select></label>
-      <label>Status <select id="filter-status"><option value="">All</option>${statuses.map((status) => `<option>${escapeHtml(status)}</option>`).join("")}</select></label>
-      <label>Priority <select id="filter-priority"><option value="">All</option><option>Standard</option><option>ASAP</option></select></label>
-      <label>Quoter <select id="filter-quoter"><option value="">All</option>${quoters.map((quoter) => `<option value="${escapeHtml(quoter.id)}">${escapeHtml(quoter.name)}</option>`).join("")}</select></label>
-    </div>
-    <div class="table-scroll"><table><caption class="visually-hidden">All quote submissions</caption>
-      <thead><tr><th scope="col">Number</th><th scope="col">Type</th><th scope="col">Account</th><th scope="col">Company</th><th scope="col">Rep</th><th scope="col">Submitter role</th><th scope="col">Priority</th><th scope="col">Status</th><th scope="col">Assigned quoter</th><th scope="col">Submitted</th></tr></thead>
-      <tbody id="quote-log-body">${rows}</tbody>
-    </table></div>
-    <div class="quote-detail-panel" id="quote-detail-panel" hidden></div>
-  </section>`;
-}
-
-function bindQuoteLogFilters() {
-  const filters = ["filter-type", "filter-status", "filter-priority", "filter-quoter"].map((id) => document.getElementById(id));
-  const body = document.getElementById("quote-log-body");
-  const count = document.getElementById("quote-log-count");
-  const panel = document.getElementById("quote-detail-panel");
-
-  function applyFilters() {
-    const [type, status, priority, quoter] = filters.map((filter) => filter.value);
-    let visible = 0;
-    for (const row of body.querySelectorAll(".quote-log-row")) {
-      const show = (!type || row.dataset.type === type)
-        && (!status || row.dataset.status === status)
-        && (!priority || row.dataset.priority === priority)
-        && (!quoter || row.dataset.quoter === quoter);
-      row.hidden = !show;
-      if (show) visible += 1;
-    }
-    count.textContent = `${visible} submission${visible === 1 ? "" : "s"}`;
-  }
-  for (const filter of filters) filter.addEventListener("change", applyFilters);
-
-  body.addEventListener("click", (event) => {
-    const row = event.target.closest(".quote-log-row");
-    if (row) openQuoteDetail(row.dataset.quoteId, panel);
-  });
-  body.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    const row = event.target.closest(".quote-log-row");
-    if (row) { event.preventDefault(); openQuoteDetail(row.dataset.quoteId, panel); }
-  });
 }
 
 async function openQuoteDetail(quoteId, panel) {
@@ -891,7 +805,7 @@ function bindSendToCustomerPanel(panel) {
 }
 
 function renderPageContent(page, quotes, user, reports, quoters, branding, reassignments = [], dataverse = null) {
-  const [title, description] = pageCopy[page.href];
+  const [title, description] = pageCopy[page.href] || [page.label || "QuoteFlow", ""];
   const pageContent = document.querySelector("#page-content");
   pageContent.innerHTML = `<section class="intro" aria-labelledby="page-title"><div><p class="eyebrow">${escapeHtml(user.role.toUpperCase())} WORKSPACE</p><h1 id="page-title">${escapeHtml(title)}</h1><p class="intro-copy">${escapeHtml(description)}</p></div><span class="page-index">${escapeHtml(user.role.toUpperCase())}</span></section><div id="page-body"></div><footer class="footer"><span>QUOTEFLOW DOCUMENT WORKSPACE</span><span>${escapeHtml(user.role.toUpperCase())} VIEW</span></footer>`;
   const pageBody = document.querySelector("#page-body");
@@ -918,7 +832,7 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
           </form>
           <div id="xref-runs"></div>
         </section>
-        <section class="xr-detail" id="xref-detail" aria-live="polite" hidden></section>
+        <section class="xr-detail" id="xref-detail" tabindex="-1" aria-live="polite" aria-label="Run detail" hidden></section>
       </div>`;
     return;
   }
@@ -935,7 +849,7 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
             <p class="request-feedback" id="ocr-status" role="status" aria-live="polite"></p>
           </div>
         </section>
-        <div id="ocr-results" aria-live="polite"></div>
+        <div id="ocr-results" aria-live="polite"><p class="empty-items">Choose a PDF or photo, then select Read document. The file is read here and is not saved.</p></div>
       </div>`;
     return;
   }
@@ -1014,7 +928,7 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
           <p class="request-feedback" id="teams-import-status" role="status" aria-live="polite"></p>
         </form>
       </section>
-      <div id="teams-import-results"></div>`;
+      <div id="teams-import-results" aria-live="polite"></div>`;
     return;
   }
     if (page.href.endsWith("/my-settings")) {
@@ -1052,11 +966,6 @@ function renderPageContent(page, quotes, user, reports, quoters, branding, reass
   if (page.href === "/quoter/quote-workspace") {
     window.__workspaceQuotes = quotes;
     pageBody.append(document.querySelector("#quote-workspace-template").content.cloneNode(true));
-    return;
-  }
-  if (page.href === "/manager/quote-log") {
-    pageBody.innerHTML = renderQuoteLog(quotes, quoters);
-    bindQuoteLogFilters(quotes);
     return;
   }
   if (page.href === "/manager/settings") {
@@ -1185,7 +1094,7 @@ function renderNavigation(user, navigation, currentPath, branding) {
     const settingsHref = navigation.find((item) => item.href.endsWith("/my-settings"))?.href || "#";
   document.querySelector("#user-avatar").href = settingsHref;
   document.querySelector("#user-name").href = settingsHref;
-  document.querySelector("#breadcrumb").innerHTML = `Documents <span aria-hidden="true">/</span> ${escapeHtml(pageCopy[currentPath][0])}`;
+  document.querySelector("#breadcrumb").innerHTML = `Documents <span aria-hidden="true">/</span> ${escapeHtml(pageCopy[currentPath]?.[0] || currentPath)}`;
   const companyLogo = document.querySelector("#brand-logo");
   const hasCompanyLogo = branding.logoPath && !branding.logoPath.includes("quoteflow-logo.svg");
   companyLogo.hidden = !hasCompanyLogo;
@@ -1204,6 +1113,7 @@ async function loadWorkspace() {
     if (!response.ok) throw new Error("Workspace could not be loaded.");
 
     const workspace = await response.json();
+    setPageCatalog(workspace.pages);
     const path = window.location.pathname;
     const page = workspace.navigation.find((item) => item.href === path);
     if (!page) {

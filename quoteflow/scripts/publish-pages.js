@@ -20,6 +20,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { ASSETS } = require('./pages-assets');
+const { renderStaticCatalog } = require('../pages.config');
+
+// The static build's page list lives between these markers. The list used to be
+// hand-kept, so it drifted from the app's menu; it is generated from the same
+// manifest now, and pages:sync rewrites it.
+const CATALOG_MARKERS = /(\/\/ BEGIN PAGE CATALOG[^\n]*\n)[\s\S]*?(\/\/ END PAGE CATALOG)/;
 
 const APP_DIR = path.resolve(__dirname, '..');
 const PUBLIC_DIR = path.join(APP_DIR, 'public');
@@ -84,6 +90,25 @@ function copyAssets() {
     changed = true;
   }
   return changed;
+}
+
+/** Rewrites the PAGES / PAGE_COPY block in pages/index.html from pages.config.js. */
+function syncPageCatalog() {
+  const file = path.join(PAGES_DIR, 'index.html');
+  if (!fs.existsSync(file)) throw new Error('Missing pages/index.html');
+  const text = fs.readFileSync(file, 'utf8');
+  if (!CATALOG_MARKERS.test(text)) {
+    throw new Error('pages/index.html has no PAGE CATALOG markers, so its page list cannot be generated.');
+  }
+  const next = text.replace(CATALOG_MARKERS, (_match, opening, closing) => `${opening}${renderStaticCatalog()}\n${closing}`);
+  const normalise = (value) => value.replace(/\r\n/g, '\n');
+  if (normalise(next) === normalise(text)) {
+    console.log('  index.html page catalog up to date');
+    return false;
+  }
+  fs.writeFileSync(file, next);
+  console.log('  index.html page catalog regenerated from pages.config.js');
+  return true;
 }
 
 function publish({ dryRun }) {
@@ -164,7 +189,10 @@ function publish({ dryRun }) {
 function main() {
   const args = new Set(process.argv.slice(2));
   console.log('Syncing static Pages assets from public/');
-  const copied = copyAssets();
+  const copiedAssets = copyAssets();
+  console.log('Syncing the Pages page catalog from pages.config.js');
+  const copiedCatalog = syncPageCatalog();
+  const copied = copiedAssets || copiedCatalog;
 
   if (args.has('--copy-only')) {
     console.log(copied ? 'pages/ updated; run "npm run pages:publish" to publish it.' : 'pages/ already matches public/.');

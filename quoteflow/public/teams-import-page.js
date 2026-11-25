@@ -31,6 +31,9 @@ function initializeTeamsImport() {
     const shownNote = summary.new + summary.needsAttention > requests.length
       ? `<p class="section-description">Showing the first ${requests.length} new or flagged rows.</p>`
       : "";
+    const duplicateNote = summary.duplicateRows
+      ? `<p class="section-description">${summary.duplicateRows} repeated row${summary.duplicateRows === 1 ? "" : "s"} in this file share a form ID with an earlier row and were counted once.</p>`
+      : "";
     const rows = requests.map((request) => `
       <tr>
         <td>${escapeHtml(request.responseId || "—")}</td>
@@ -51,6 +54,7 @@ function initializeTeamsImport() {
         <div><strong>${summary.needsAttention}</strong><span>Need attention</span></div>
       </div>
       ${missing}
+      ${duplicateNote}
       ${requests.length ? `${shownNote}<div class="table-scroll"><table>
         <caption class="visually-hidden">Requests found in the quote log</caption>
         <thead><tr><th scope="col">Form ID</th><th scope="col">Company</th><th scope="col">Account</th><th scope="col">Rep</th><th scope="col">Type</th><th scope="col">Priority</th><th scope="col">Submitted</th><th scope="col">Status</th></tr></thead>

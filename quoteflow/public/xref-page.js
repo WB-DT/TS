@@ -55,6 +55,7 @@ function initializeXref() {
       current = await api(`/api/xref/runs/${encodeURIComponent(id)}`);
       history.replaceState(null, "", `?run=${encodeURIComponent(id)}`);
       renderDetail();
+      detail.focus();
       loadRuns();
     } catch (error) {
       detail.innerHTML = `<p class="request-feedback is-error">${escapeHtml(error.message)}</p>`;
@@ -159,6 +160,11 @@ function initializeXref() {
       body.append("file", input.files[0]);
       current = await api(`/api/xref/runs/${encodeURIComponent(current.run.id)}/files/${kind}`, { method: "POST", body });
       renderDetail();
+      const landed = detail.querySelector(`#xr-status-${kind}`);
+      if (landed) {
+        landed.textContent = `Uploaded ${input.files[0].name}.`;
+        landed.className = "request-feedback is-success";
+      }
       loadRuns();
     } catch (error) {
       status.className = "request-feedback is-error";

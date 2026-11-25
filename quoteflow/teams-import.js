@@ -153,8 +153,26 @@ function parseQuoteLog(buffer, sheetName = "Quote Log") {
   const rows = XLSX.utils.sheet_to_json(sheet, { defval: null, raw: true });
   const headers = rows.length ? Object.keys(rows[0]) : [];
   const { found, missing } = matchColumns(headers, QUOTE_LOG_COLUMNS);
-  const requests = rows.map((row) => toRequest(row, found)).filter((request) => request.responseId || request.companyName);
-  return { sheetName, columnsMissing: missing, requests };
+  // One Teams form submission can sit on more than one log row. The first row is
+  // the request; later rows with the same form response ID are the same submission
+  // repeated, so they are counted and dropped instead of becoming half-imported
+  // duplicates. Rows without a response ID cannot be matched, so they all stay.
+  const seen = new Set();
+  const requests = [];
+  let duplicateRows = 0;
+  for (const row of rows) {
+    const request = toRequest(row, found);
+    if (!request.responseId && !request.companyName) continue;
+    if (request.responseId) {
+      if (seen.has(request.responseId)) {
+        duplicateRows += 1;
+        continue;
+      }
+      seen.add(request.responseId);
+    }
+    requests.push(request);
+  }
+  return { sheetName, columnsMissing: missing, requests, duplicateRows };
 }
 
 module.exports = { parseQuoteLog, QUOTE_LOG_COLUMNS };

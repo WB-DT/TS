@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "db:setup": "node db/cli.js",
+    "db:reset": "node scripts/reset-demo.js",
+    "uploads:prune": "node scripts/prune-uploads.js",
     "pages:sync": "node scripts/publish-pages.js --copy-only",
     "pages:publish": "node scripts/publish-pages.js",
     "test": "node --test"

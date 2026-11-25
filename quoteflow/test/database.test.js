@@ -6,7 +6,7 @@ const test = require("node:test");
 const knexFactory = require("knex");
 const createRepositories = require("../db/repositories");
 const { installViews } = require("../db/views");
-const { seed, statusNames } = require("../db/seed");
+const { seed, statusNames, users: seedUsers } = require("../db/seed");
 
 const makeField = (value, confidence = 0.94) => ({
   value,
@@ -39,7 +39,8 @@ test("database migrations, reporting, workflow, OCR edits, and duplicates", asyn
       const row = await knex(table).count({ count: "id" }).first();
       return Number(row.count);
     };
-    assert.equal(await countFor("users"), 9);
+    // Counted from the seed data, so adding a demo person no longer breaks the test.
+    assert.equal(await countFor("users"), seedUsers.length);
     assert.equal(await countFor("accounts"), 8);
     assert.equal(await countFor("quotes"), 30);
     const seededStatuses = await knex("quotes").distinct("status").pluck("status");
@@ -375,7 +376,7 @@ test("user management, first-manager setup, and audit logging", async () => {
 
     // The users list includes inactive users with their roles.
     const all = await repositories.users.listAllWithRoles();
-    assert.equal(all.length, 10);
+    assert.equal(all.length, seedUsers.length + 1); // the seeded people plus the one created above
     assert.ok(all.some((user) => !user.active));
     assert.deepEqual(all.find((user) => user.id === "quoter-1").roles, ["Manager", "Quoter"]);
   } finally {

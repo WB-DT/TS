@@ -1,0 +1,35 @@
+name: QuoteFlow tests
+
+# Runs the QuoteFlow test suite on every change to the app, which includes the
+# Pages drift check (pages/ and public/ copies, and the page catalog generated
+# from pages.config.js). Before this existed, only a local npm test caught drift.
+on:
+  push:
+    paths:
+      - "quoteflow/**"
+      - ".github/workflows/quoteflow-tests.yml"
+  pull_request:
+    paths:
+      - "quoteflow/**"
+      - ".github/workflows/quoteflow-tests.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 22]
+    defaults:
+      run:
+        working-directory: quoteflow
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: quoteflow/package-lock.json
+      - run: npm ci
+      - run: npm test

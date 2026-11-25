@@ -21,3 +21,6 @@ templates/
 # Logs
 *.log
 ocr-cache/
+
+# Generated: npm run pages:sync restores it from node_modules
+pages/msal-browser.min.js

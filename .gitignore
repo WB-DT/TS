@@ -1,0 +1,5 @@
+# Local patches and tarballs made while working on QuoteFlow. They are scratch
+# output, never part of the app or the Pages build.
+quoteflow-serverjs-only.tar.gz
+quoteflow-serverjs.patch
+quoteflow/fix-load-form-layout.zip
