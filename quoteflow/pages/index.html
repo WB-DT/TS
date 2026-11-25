@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="quote-flow-build" content="pages-2" />
+<meta name="robots" content="noindex" />
+<title>QuoteFlow | Dataverse workspace</title>
+<style>
+  :root {
+    --nav: #10233f; --nav-soft: #18375f; --bg: #f4f7fb; --card: #fff; --text: #162337;
+    --muted: #68778d; --line: #dce4ef; --blue: #1769e0; --green: #188552; --amber: #a65d00;
+    --red: #b42318; --shadow: 0 8px 24px rgba(16, 35, 63, .08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  button, input, select { font: inherit; }
+  button { cursor: pointer; }
+  .hidden, [hidden] { display: none !important; }
+  .muted { color: var(--muted); }
+  .btn { border: 1px solid var(--line); background: #fff; padding: 8px 13px; border-radius: 9px; color: var(--text); }
+  .btn:hover { border-color: #b9c6d8; }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.danger { color: var(--red); }
+  .btn:disabled { opacity: .6; cursor: default; }
+  .chip { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #eaf2ff; color: #1759ae; white-space: nowrap; }
+  .chip.review { background: #fdf1dc; color: var(--amber); }
+  .chip.success { background: #e6f5ec; color: var(--green); }
+  .chip.error { background: #fdecea; color: var(--red); }
+
+  /* sign-in */
+  .lock { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: linear-gradient(160deg, #10233f, #09182c); }
+  .lock-card { width: min(460px, 100%); background: #fff; border-radius: 18px; padding: 30px; box-shadow: var(--shadow); }
+  .lock-card h1 { margin: 0 0 6px; font-size: 26px; }
+  .lock-actions { display: grid; gap: 10px; margin: 22px 0 0; }
+  .error-box { margin-top: 16px; padding: 10px 12px; border-radius: 9px; background: #fdecea; color: var(--red); font-size: 13px; }
+  details.settings { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 14px; }
+  details.settings summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+  .field-grid { display: grid; gap: 12px; margin-top: 14px; }
+  .field-grid label { display: grid; gap: 5px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .field-grid input { padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px; color: var(--text); }
+  .field-note { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
+
+  /* shell */
+  .shell { min-height: 100vh; display: grid; grid-template-columns: 236px 1fr; }
+  .sidebar { background: linear-gradient(180deg, var(--nav), #09182c); color: #fff; padding: 20px 14px; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; }
+  .brand { font-size: 21px; font-weight: 800; padding: 6px 8px 22px; }
+  .brand small { display: block; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #a9bed8; font-weight: 600; }
+  .nav { display: grid; gap: 3px; }
+  .nav button { text-align: left; border: 0; background: transparent; color: #d7e4f3; padding: 10px 12px; border-radius: 10px; font-size: 13px; }
+  .nav button:hover, .nav button.active { background: var(--nav-soft); color: #fff; }
+  .who { margin-top: auto; padding: 10px; background: #153250; border-radius: 10px; font-size: 12px; display: grid; gap: 2px; overflow-wrap: anywhere; }
+  .who strong { font-size: 12px; }
+  .who span { color: #a9bed8; font-size: 11px; }
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { min-height: 64px; background: #fff; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 24px; position: sticky; top: 0; z-index: 3; flex-wrap: wrap; }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .status { padding: 6px 11px; border-radius: 999px; background: #eaf2ff; color: #1759ae; font-size: 12px; font-weight: 600; }
+  .status.warn { background: #fdf1dc; color: var(--amber); }
+  .content { padding: 22px; max-width: 1500px; width: 100%; margin: 0 auto; }
+
+  /* panels */
+  .hero { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 18px; }
+  .hero h1 { margin: 0 0 4px; font-size: 24px; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); margin-bottom: 18px; overflow: hidden; }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .panel-head h2 { margin: 0; font-size: 15px; }
+  .panel-body { padding: 16px 18px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow); }
+  .card p { margin: 0; color: var(--muted); font-size: 12px; font-weight: 600; }
+  .card strong { display: block; margin-top: 6px; font-size: 24px; font-weight: 700; }
+  .card small { color: var(--muted); font-size: 11px; }
+  .stage-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .stage-card { border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 11px 13px; text-align: left; }
+  .stage-card strong { display: block; font-size: 20px; }
+  .stage-card span { color: var(--muted); font-size: 11px; font-weight: 600; }
+  .stage-card.is-active { border-color: #9dbdf0; background: #eaf2ff; }
+  .filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .filters input[type="search"] { flex: 1 1 240px; min-width: 180px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; }
+  .table-scroll { overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { background: #f8fafd; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; position: sticky; top: 0; }
+  tbody tr.row { cursor: pointer; }
+  tbody tr.row:hover { background: #f6f9ff; }
+  td.num { text-align: right; }
+  .pager { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+  .empty { padding: 22px 18px; color: var(--muted); }
+  .notice { padding: 11px 14px; border-radius: 10px; background: #fdf1dc; color: #7a4600; font-size: 13px; margin-bottom: 16px; }
+  .notice.error { background: #fdecea; color: var(--red); }
+
+  /* drawer */
+  .backdrop { position: fixed; inset: 0; background: rgba(9, 24, 44, .35); z-index: 8; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100%); background: #fff; z-index: 9; display: flex; flex-direction: column; box-shadow: -12px 0 32px rgba(16, 35, 63, .18); }
+  .drawer-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+  .drawer-head h2 { margin: 0; font-size: 16px; }
+  .drawer-body { padding: 16px 18px; overflow: auto; }
+  .assign { border: 1px solid var(--line); border-radius: 12px; padding: 13px 14px; margin-bottom: 16px; display: grid; gap: 9px; }
+  .assign label { font-size: 12px; font-weight: 600; color: var(--muted); display: grid; gap: 5px; }
+  .assign input { padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px; }
+  .assign-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .feedback { font-size: 12px; }
+  .feedback.ok { color: var(--green); }
+  .feedback.bad { color: var(--red); }
+  .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px 18px; margin: 0; }
+  .fields div { min-width: 0; }
+  .fields dt { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; }
+  .fields dd { margin: 2px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 12px; }
+  @media (max-width: 860px) { .shell { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; } .nav { grid-auto-flow: column; overflow-x: auto; } .who { margin-top: 12px; } }
+</style>
+</head>
+<body>
+<noscript><p style="padding:24px">QuoteFlow needs JavaScript to sign in to Microsoft and read Dataverse.</p></noscript>
+
+<section class="lock" id="lock">
+  <div class="lock-card">
+    <h1>QuoteFlow</h1>
+    <p class="muted" style="margin:0">Quote Log and MDM Log, read live from Microsoft Dataverse.</p>
+    <div class="lock-actions">
+      <button class="btn primary" id="sign-in" type="button">Sign in with your work account</button>
+    </div>
+    <div class="error-box" id="lock-error" hidden></div>
+    <details class="settings">
+      <summary>Connection settings</summary>
+      <p class="field-note">Stored in this browser only. Public identifiers; nothing secret is kept here.</p>
+      <div class="field-grid">
+        <label>Tenant ID<input id="cfg-tenant" /></label>
+        <label>Application (client) ID<input id="cfg-client" /></label>
+        <label>Dataverse URL<input id="cfg-url" /></label>
+        <label>Quote Log table<input id="cfg-quote-table" /></label>
+        <label>MDM Log table<input id="cfg-mdm-table" /></label>
+        <p class="field-note" id="cfg-redirect"></p>
+        <div><button class="btn" id="save-config" type="button">Save and reload</button></div>
+      </div>
+    </details>
+  </div>
+</section>
+
+<div class="shell" id="shell" hidden>
+  <aside class="sidebar">
+    <div class="brand">QuoteFlow<small>Dataverse workspace</small></div>
+    <nav class="nav" id="nav">
+      <button data-view="dashboard" class="active" type="button">Dashboard</button>
+      <button data-view="quote" type="button">Quote Log</button>
+      <button data-view="mdm" type="button">MDM Log</button>
+      <button data-view="settings" type="button">Settings</button>
+    </nav>
+    <div class="who"><strong id="who-name">Signed in</strong><span id="who-email"></span></div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <strong id="view-title">Dashboard</strong>
+      <div class="toolbar">
+        <span class="status" id="status">Not synchronized</span>
+        <button class="btn" id="refresh" type="button">Refresh</button>
+        <button class="btn" id="export" type="button">Export CSV</button>
+        <button class="btn danger" id="sign-out" type="button">Sign out</button>
+      </div>
+    </header>
+    <main class="content" id="view"></main>
+  </div>
+</div>
+
+<div class="backdrop" id="backdrop" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="Record details">
+  <div class="drawer-head"><h2 id="drawer-title">Record</h2><button class="btn" id="drawer-close" type="button">Close</button></div>
+  <div class="drawer-body" id="drawer-body"></div>
+</aside>
+
+<!-- MSAL Browser, served next to this page so sign-in does not depend on a CDN. -->
+<script src="./msal-browser.min.js"></script>
+<script>
+"use strict";
+// ---------------------------------------------------------------------------
+// QuoteFlow, static build for GitHub Pages.
+//
+// This is the same app surface as the Express build, run entirely in the browser
+// because Pages cannot host a Node server: Microsoft sign-in through MSAL, then
+// OData v4.0 queries straight to Dataverse for the Quote Log (cr714_quotelog) and
+// MDM Log (cr714_mdmlog), an assignment write-back (PATCH cr714_assignedto +
+// cr714_dateassigned), CSV export and the dashboard metrics.
+//
+// Reads are bounded exactly like the server sync: 20,000 rows per log, 200 pages,
+// 120 seconds. A read that hits a bound fails without showing a partial log.
+// Column names are never renamed, so every field maps straight back to Dataverse.
+// ---------------------------------------------------------------------------
+
+const ANNOTATION = "@OData.Community.Display.V1.FormattedValue";
+const STORAGE_KEY = "qf-pages-config";
+const LIMITS = { maxRows: 20000, maxPages: 200, timeoutMs: 120000, pageSize: 100 };
+const DEFAULTS = {
+  tenantId: "9a7c474b-f702-4ae4-a2f9-b72a1e117401",
+  clientId: "afe649b6-9c70-4b1a-8592-78588284c8ee",
+  dataverseUrl: "https://org23279050.crm.dynamics.com",
+  quoteTable: "cr714_quotelog",
+  mdmTable: "cr714_mdmlog",
+};
+const ID_COLUMN = { quote: "cr714_quotelogid", mdm: "cr714_mdmlogid" };
+
+// Field labels, the same map the Express request-log page uses.
+const LABELS = {
+  createdon: "Created on", modifiedon: "Modified on", createdbyname: "Created by", modifiedbyname: "Modified by",
+  owneridname: "Owner", owneridyominame: "Owner (display)", cr714_recordkey: "Record key",
+  cr714_quotelogid: "Quote log ID", cr714_mdmlogid: "MDM log ID", cr714_quotenumber: "Q-number",
+  cr714_oldquotenumber: "Old Q-number", cr714_companyname: "Company", cr714_customernumber: "Customer number",
+  cr714_accountnumber: "Account number", cr714_customerorlead: "Customer or lead", cr714_requestpriority: "Priority",
+  cr714_asapapprovingmanager: "ASAP approved by", cr714_asapnotes: "ASAP notes", cr714_requestnotes: "Request notes",
+  cr714_submittername: "Submitted by", cr714_submitteremail: "Submitter email", cr714_submittingagentrole: "Submitter role",
+  cr714_requestorname: "Requestor", cr714_requestsource: "Request from", cr714_branchwarehouse: "Branch / warehouse",
+  cr714_starttime: "Form started", cr714_completiontime: "Form submitted", cr714_category: "Category",
+  cr714_competitor: "Competitor", cr714_itemstoquote: "Items to quote", cr714_assignedto: "Assigned to",
+  cr714_quoter: "Quoter", cr714_dateassigned: "Date assigned", cr714_datequalified: "Date qualified",
+  cr714_qualifierquoternotes: "Qualifier / quoter notes", cr714_multiplier: "Multiplier",
+  cr714_totalitemsquoted: "Items quoted", cr714_totalitemsquotedbid: "Items quoted / bid",
+  cr714_wbsellpricetotal: "Sell price total", cr714_wbsellpricetotal_base: "Sell price total (base)",
+  cr714_grossprofitpercent: "GP %", cr714_datereturnedorkilled: "Returned or killed",
+  cr714_datesentbacktorepmdm: "Sent back to rep / MDM", cr714_sentforrevision: "Sent for revision",
+  cr714_sentforrevisionname: "Sent for revision (label)", cr714_datesentforrevision: "Date sent for revision",
+  cr714_daterevised: "Date revised", cr714_revisedby: "Revised by", cr714_numberofchanges: "Number of changes",
+  cr714_revisionnotes: "Revision notes", cr714_ppl: "PPL", cr714_lockedindate: "Locked-in date",
+  cr714_datelockedin: "Locked-in date", cr714_bidduedate: "Bid due date", cr714_mdmduedate: "MDM due date",
+  cr714_quoterduedate: "Quoter due date", cr714_bidnotes: "Bid notes", cr714_completionnotes: "Completion notes",
+  cr714_disposition: "Disposition", cr714_isquoteneeded: "Quote needed", cr714_isquoteneededname: "Quote needed (label)",
+  cr714_fraudcheckcomplete: "Fraud check complete", cr714_fraudcheckcompletename: "Fraud check (label)",
+  cr714_fraudnotes: "Fraud notes", cr714_itemsawarded: "Items awarded", cr714_amountawarded: "Amount awarded",
+  cr714_amountawarded_base: "Amount awarded (base)", cr714_sentinsentout: "Sent in / sent out",
+  cr714_attachment: "Attachment", cr714_attachmentcount: "Attachment count", cr714_hasattachment: "Has attachment",
+  cr714_hasattachmentname: "Has attachment (label)", cr714_requestattachment: "Request attachment",
+  cr714_requestattachmentcount: "Request attachment count", cr714_completedquoteattachment: "Completed quote attachment",
+  cr714_completedquoteattachmentcount: "Completed quote attachment count", cr714_totalattachmentcount: "Total attachments",
+  cr714_sourcefile: "Source file", cr714_sourcesheet: "Source sheet", cr714_sourceid: "Source ID",
+  cr714_sourcemodifiedon: "Source modified on", statecode: "State", statuscode: "Status",
+};
+
+const SEARCH_COLUMNS = {
+  quote: ["cr714_quotenumber", "cr714_companyname", "cr714_customernumber", "cr714_submittername", "cr714_assignedto", "cr714_ppl", "cr714_recordkey"],
+  mdm: ["cr714_accountnumber", "cr714_requestorname", "cr714_submittername", "cr714_branchwarehouse", "cr714_quoter", "cr714_assignedto", "cr714_ppl", "cr714_recordkey"],
+};
+
+// Same stage rules as server.js (quoteLogStatus) and dataverse-logs.js (stageOf).
+const QUOTE_STAGES = ["Submitted", "Ready to assign", "Assigned", "Awaiting approval", "In revision", "Approved", "Returned"];
+const MDM_STAGES = ["New", "Assigned", "Sent back"];
+
+function text(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "boolean") return value ? "true" : "false";
+  const raw = String(value).trim();
+  return raw === "" ? null : raw;
+}
+
+// [Dataverse map] one OData row -> every column as text, plus the display labels
+// Dataverse sent for lookups and choices. Nothing is renamed.
+function normalizeRow(logKey, row) {
+  const values = {};
+  const labels = {};
+  const take = (column, value, label) => {
+    const plain = text(value);
+    if (plain !== null) values[column] = plain;
+    const shown = text(label);
+    if (shown !== null) labels[column] = shown;
+  };
+  for (const [key, value] of Object.entries(row)) {
+    if (key.includes("@")) {
+      if (key.endsWith(ANNOTATION)) {
+        const column = key.slice(0, -ANNOTATION.length).replace(/^_/, "").replace(/_value$/, "");
+        const shown = text(value);
+        if (shown !== null) labels[column] = shown;
+      }
+      continue;
+    }
+    if (key.startsWith("_")) continue; // lookups are read from "_column_value"
+    if (key.endsWith("name") && row[key.slice(0, -4)] !== undefined) {
+      const shown = text(value);
+      if (shown !== null) labels[key.slice(0, -4)] = shown;
+      continue;
+    }
+    take(key, value, row[key + "name"]);
+  }
+  for (const [key, value] of Object.entries(row)) {
+    if (!key.startsWith("_") || !key.endsWith("_value")) continue;
+    const column = key.slice(1, -"_value".length);
+    take(column, value, row[key + ANNOTATION]);
+  }
+  return { id: String(text(row[ID_COLUMN[logKey]]) || "").toLowerCase(), values, labels };
+}
+
+function display(row, column) {
+  return row.labels[column] ?? row.values[column] ?? "";
+}
+
+function quoteStage(row) {
+  const sentForRevision = String(display(row, "cr714_sentforrevision")).toLowerCase();
+  if (row.values.cr714_datereturnedorkilled) return "Returned";
+  if (row.values.cr714_completiontime) return "Approved";
+  if (sentForRevision === "true" || sentForRevision === "yes" || sentForRevision === "1" || row.values.cr714_datesentforrevision) return "In revision";
+  if (row.values.cr714_asapapprovingmanager && row.values.cr714_assignedto && row.values.cr714_datequalified) return "Awaiting approval";
+  if (row.values.cr714_assignedto || row.values.cr714_dateassigned) return "Assigned";
+  if (row.values.cr714_datequalified) return "Ready to assign";
+  return "Submitted";
+}
+
+function mdmStage(row) {
+  if (row.values.cr714_datesentbacktorepmdm) return "Sent back";
+  if (row.values.cr714_assignedto || row.values.cr714_quoter || row.values.cr714_dateassigned) return "Assigned";
+  return "New";
+}
+
+function stageOf(logKey, row) {
+  return logKey === "quote" ? quoteStage(row) : mdmStage(row);
+}
+
+function stageNames(logKey) {
+  return logKey === "quote" ? QUOTE_STAGES : MDM_STAGES;
+}
+
+function stageTone(stage) {
+  if (["Approved"].includes(stage)) return "success";
+  if (["Returned", "In revision", "Awaiting approval", "Sent back"].includes(stage)) return "review";
+  return "";
+}
+
+function money(value) {
+  return Number(value || 0).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+}
+
+function day(value) {
+  if (!value) return "—";
+  const parsed = new Date(String(value).length <= 10 ? value + "T00:00:00" : value);
+  return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleDateString("en-US");
+}
+
+function percent(value) {
+  if (value === null || value === undefined || value === "") return "—";
+  const number = Number(value);
+  if (!Number.isFinite(number)) return String(value);
+  return (Math.abs(number) <= 1 ? number * 100 : number).toFixed(1) + "%";
+}
+
+function matchesSearch(logKey, row, term) {
+  const needle = String(term || "").trim().toLowerCase();
+  if (!needle) return true;
+  return SEARCH_COLUMNS[logKey].some((column) => String(display(row, column)).toLowerCase().includes(needle));
+}
+
+function sortRows(rows) {
+  return [...rows].sort((a, b) => String(b.values.modifiedon || b.values.createdon || "").localeCompare(String(a.values.modifiedon || a.values.createdon || "")));
+}
+
+function stageCounts(logKey, rows) {
+  const counts = {};
+  for (const stage of stageNames(logKey)) counts[stage] = 0;
+  for (const row of rows) {
+    const stage = stageOf(logKey, row);
+    counts[stage] = (counts[stage] || 0) + 1;
+  }
+  return counts;
+}
+
+// The original dashboard: totals, work waiting, and pipeline value.
+function metrics(rows) {
+  let pipelineValue = 0;
+  const stages = stageCounts("quote", rows);
+  for (const row of rows) pipelineValue += Number(row.values.cr714_wbsellpricetotal) || 0;
+  return {
+    total: rows.length,
+    pipelineValue,
+    stages,
+    needsAssignment: (stages.Submitted || 0) + (stages["Ready to assign"] || 0),
+    awaitingApproval: stages["Awaiting approval"] || 0,
+  };
+}
+
+function csvValue(value) {
+  const textValue = String(value ?? "");
+  return /[",\r\n]/.test(textValue) ? '"' + textValue.replaceAll('"', '""') + '"' : textValue;
+}
+
+// CSV with the Dataverse column names as headers, plus the app's stage column.
+function csvFor(logKey, rows) {
+  const columns = [...new Set(rows.flatMap((row) => Object.keys(row.values)))].sort();
+  const lines = [[...columns, "stage"].join(",")];
+  for (const row of rows) {
+    lines.push([...columns.map((column) => row.values[column]), stageOf(logKey, row)].map(csvValue).join(","));
+  }
+  return "\uFEFF" + lines.join("\r\n");
+}
+
+function emptyState(message) {
+  return '<p class="empty">' + message + "</p>";
+}
+/* __pure_end__ */
+
+// ---------------------------------------------------------------------------
+// Browser bootstrap
+// ---------------------------------------------------------------------------
+function loadConfig() {
+  let saved = {};
+  try {
+    saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {};
+  } catch {
+    saved = {};
+  }
+  return { ...DEFAULTS, ...saved };
+}
+
+let cfg = loadConfig();
+let msalApp = null;
+let account = null;
+let token = null;
+const state = { view: "dashboard", logs: { quote: { rows: [], page: 0, search: "", stage: "" }, mdm: { rows: [], page: 0, search: "", stage: "" } }, loadedAt: null, error: "", busy: false };
+
+const el = (id) => document.getElementById(id);
+const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+const scope = () => cfg.dataverseUrl.replace(/\/+$/, "") + "/user_impersonation";
+const redirectUri = () => location.origin + location.pathname;
+const entitySets = () => {
+  try {
+    return JSON.parse(localStorage.getItem("qf-pages-entitysets") || "{}") || {};
+  } catch {
+    return {};
+  }
+};
+
+function saveEntitySet(logicalName, entitySet) {
+  const cache = entitySets();
+  cache[logicalName] = entitySet;
+  try {
+    localStorage.setItem("qf-pages-entitysets", JSON.stringify(cache));
+  } catch {
+    /* storage full or blocked: the app just resolves the name again next time */
+  }
+}
+
+function setStatus(message, tone = "") {
+  const status = el("status");
+  status.className = "status" + (tone ? " " + tone : "");
+  status.textContent = message;
+}
+
+function showLockError(message) {
+  const box = el("lock-error");
+  box.textContent = message;
+  box.hidden = !message;
+}
+
+async function initMsal() {
+  if (msalApp) return msalApp;
+  if (!window.msal) throw new Error("Microsoft sign-in could not load. Check the network or content-security settings.");
+  const app = new window.msal.PublicClientApplication({
+    auth: {
+      clientId: cfg.clientId,
+      authority: "https://login.microsoftonline.com/" + cfg.tenantId,
+      redirectUri: redirectUri(),
+      navigateToLoginRequestUrl: true,
+    },
+    cache: { cacheLocation: "sessionStorage", storeAuthStateInCookie: false },
+  });
+  if (typeof app.initialize === "function") await app.initialize();
+  msalApp = app;
+  return app;
+}
+
+async function requestToken({ interactive = false } = {}) {
+  const app = await initMsal();
+  account = account || app.getActiveAccount() || app.getAllAccounts()[0] || null;
+  if (!account) return null;
+  try {
+    const result = await app.acquireTokenSilent({ scopes: [scope()], account });
+    token = result.accessToken;
+    return token;
+  } catch (error) {
+    if (!interactive) throw error;
+    const result = await app.acquireTokenPopup({ scopes: [scope()], account });
+    token = result.accessToken;
+    return token;
+  }
+}
+
+// One OData call as the signed-in person. A 401 means the token aged out: ask MSAL
+// once for a fresh one, then retry the same request.
+async function odata(path, options = {}, retried = false) {
+  if (!token) await requestToken();
+  const url = /^https?:/i.test(path) ? path : cfg.dataverseUrl.replace(/\/+$/, "") + path;
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      Authorization: "Bearer " + token,
+      Accept: "application/json",
+      "OData-MaxVersion": "4.0",
+      "OData-Version": "4.0",
+      Prefer: 'odata.include-annotations="*",odata.maxpagesize=5000',
+      ...(options.headers || {}),
+    },
+  });
+  if (response.status === 401 && !retried) {
+    await requestToken({ interactive: true });
+    return odata(path, options, true);
+  }
+  if (!response.ok) {
+    let detail = response.status + " " + response.statusText;
+    try {
+      const body = await response.json();
+      detail = (body && body.error && body.error.message) || detail;
+    } catch {
+      /* no JSON body */
+    }
+    throw new Error("Dataverse said: " + detail);
+  }
+  if (response.status === 204) return {};
+  return response.json();
+}
+
+async function entitySetFor(logicalName) {
+  const cached = entitySets()[logicalName];
+  if (cached) return cached;
+  const definition = await odata("/api/data/v9.2/EntityDefinitions(LogicalName='" + logicalName + "')?$select=EntitySetName");
+  const name = definition && definition.EntitySetName;
+  if (!name) throw new Error("Dataverse has no table called " + logicalName + ".");
+  saveEntitySet(logicalName, name);
+  return name;
+}
+
+// Bounded read of one log: every page, 20,000 rows and 120 s at most.
+async function loadLog(logKey) {
+  const logicalName = logKey === "quote" ? cfg.quoteTable : cfg.mdmTable;
+  const entitySet = await entitySetFor(logicalName);
+  const started = Date.now();
+  const rows = [];
+  let next = "/api/data/v9.2/" + entitySet;
+  for (let page = 0; next; page += 1) {
+    if (page >= LIMITS.maxPages) throw new Error("That table needs more than " + LIMITS.maxPages + " pages, which is this app's limit.");
+    if (Date.now() - started > LIMITS.timeoutMs) throw new Error("The Dataverse read did not finish within " + Math.round(LIMITS.timeoutMs / 1000) + "s.");
+    const payload = await odata(next);
+    if (Array.isArray(payload.value)) rows.push(...payload.value);
+    if (rows.length > LIMITS.maxRows) throw new Error("That table has more than " + LIMITS.maxRows + " rows, which is this app's limit. Narrow the view in Dataverse.");
+    next = payload["@odata.nextLink"] || null;
+  }
+  return sortRows(rows.map((row) => normalizeRow(logKey, row)).filter((row) => row.id));
+}
+
+async function assignQuote(id, assignedTo) {
+  const entitySet = await entitySetFor(cfg.quoteTable);
+  const dateAssigned = new Date().toISOString();
+  await odata("/api/data/v9.2/" + entitySet + "(" + id + ")", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "If-Match": "*" },
+    body: JSON.stringify({ cr714_assignedto: assignedTo || null, cr714_dateassigned: dateAssigned }),
+  });
+  return dateAssigned;
+}
+
+async function refreshAll({ quiet = false } = {}) {
+  if (state.busy) return;
+  state.busy = true;
+  state.error = "";
+  el("refresh").disabled = true;
+  if (!quiet) setStatus("Reading Dataverse…", "warn");
+  try {
+    const [quote, mdm] = await Promise.all([loadLog("quote"), loadLog("mdm")]);
+    state.logs.quote.rows = quote;
+    state.logs.mdm.rows = mdm;
+    state.loadedAt = Date.now();
+    setStatus(quote.length + " quotes · " + mdm.length + " MDM · " + new Date(state.loadedAt).toLocaleTimeString("en-US"));
+  } catch (error) {
+    state.error = error.message;
+    setStatus("Read failed", "warn");
+  } finally {
+    state.busy = false;
+    el("refresh").disabled = false;
+    render();
+  }
+}
+
+function chip(stage) {
+  const tone = stageTone(stage);
+  return '<span class="chip' + (tone ? " " + tone : "") + '">' + esc(stage) + "</span>";
+}
+
+function quoteRowMarkup(row) {
+  return '<tr class="row" tabindex="0" data-id="' + esc(row.id) + '" data-log="quote">' +
+    "<td>" + esc(day(row.values.createdon)) + "</td>" +
+    "<td><strong>" + esc(display(row, "cr714_quotenumber") || "Pending") + "</strong></td>" +
+    "<td>" + esc(display(row, "cr714_companyname") || "—") + "</td>" +
+    "<td>" + esc(display(row, "cr714_customernumber") || "—") + "</td>" +
+    "<td>" + esc(display(row, "cr714_customerorlead") || "—") + "</td>" +
+    "<td>" + esc(display(row, "cr714_requestpriority") || "—") + "</td>" +
+    "<td>" + esc(display(row, "cr714_submittername") || "—") + "</td>" +
+    "<td>" + esc(display(row, "cr714_itemstoquote") || "—") + "</td>" +
+    "<td>" + esc(display(row, "cr714_assignedto") || "Unassigned") + "</td>" +
+    '<td class="num">' + esc(percent(row.values.cr714_grossprofitpercent)) + "</td>" +
+    "<td>" + chip(quoteStage(row)) + "</td>" +
+    "</tr>";
+}
+
+function mdmRowMarkup(row) {
+  return '<tr class="row" tabindex="0" data-id="' + esc(row.id) + '" data-log="mdm">' +
+    "<td>" + esc(day(row.values.createdon)) + "</td>" +
+    "<td><strong>" + esc(display(row, "cr714_accountnumber") || "—") + "</strong></td>" +
+    "<td>" + esc(display(row, "cr714_requestorname") || "—") + "</td>" +
+    "<td>" + esc(display(row, "cr714_requestsource") || "—") + "</td>" +
+    "<td>" + esc(display(row, "cr714_branchwarehouse") || "—") + "</td>" +
+    "<td>" + esc(day(row.values.cr714_bidduedate)) + "</td>" +
+    "<td>" + esc(display(row, "cr714_itemstoquote") || "—") + "</td>" +
+    "<td>" + esc(display(row, "cr714_quoter") || display(row, "cr714_assignedto") || "—") + "</td>" +
+    "<td>" + esc(display(row, "cr714_disposition") || "—") + "</td>" +
+    "<td>" + chip(mdmStage(row)) + "</td>" +
+    "</tr>";
+}
+
+function logViewMarkup(logKey) {
+  const log = state.logs[logKey];
+  const counts = stageCounts(logKey, log.rows);
+  const total = log.rows.length;
+  const filtered = log.rows.filter((row) => (!log.stage || stageOf(logKey, row) === log.stage) && matchesSearch(logKey, row, log.search));
+  const pageCount = Math.max(1, Math.ceil(filtered.length / LIMITS.pageSize));
+  const page = Math.min(log.page, pageCount - 1);
+  const slice = filtered.slice(page * LIMITS.pageSize, page * LIMITS.pageSize + LIMITS.pageSize);
+  const columns = logKey === "quote"
+    ? ["Created", "Q-number", "Company", "Customer #", "Type", "Priority", "Submitted by", "Items", "Assigned to", "GP %", "Stage"]
+    : ["Created", "Account #", "Requestor", "From", "Branch", "Bid due", "Items", "Quoter", "Disposition", "Stage"];
+
+  const cards = ['<button type="button" class="stage-card' + (log.stage === "" ? " is-active" : "") + '" data-stage=""><strong>' + total + "</strong><span>All rows</span></button>"]
+    .concat(stageNames(logKey).map((stage) => '<button type="button" class="stage-card' + (log.stage === stage ? " is-active" : "") + '" data-stage="' + esc(stage) + '"><strong>' + (counts[stage] || 0) + "</strong><span>" + esc(stage) + "</span></button>"))
+    .join("");
+
+  const rows = slice.map(logKey === "quote" ? quoteRowMarkup : mdmRowMarkup).join("");
+  const first = filtered.length ? page * LIMITS.pageSize + 1 : 0;
+  const last = page * LIMITS.pageSize + slice.length;
+
+  return '<div class="hero"><div><h1>' + (logKey === "quote" ? "Quote Log" : "MDM Log") + "</h1><p class=\"muted\" style=\"margin:0\">Live from " + esc(logKey === "quote" ? cfg.quoteTable : cfg.mdmTable) + " in Dataverse.</p></div></div>" +
+    (state.error ? '<div class="notice error">' + esc(state.error) + "</div>" : "") +
+    '<div class="stage-cards">' + cards + "</div>" +
+    '<section class="panel"><div class="panel-head"><h2>' + total + " rows</h2><span class=\"muted\">" + (log.search || log.stage ? filtered.length + " matching" : "All stages") + "</span></div>" +
+    '<div class="panel-body"><form class="filters" data-log="' + logKey + '"><input type="search" name="search" value="' + esc(log.search) + '" placeholder="Search Q-number, company, account, person or PPL" /><button class="btn" type="submit">Search</button>' +
+    (log.search || log.stage ? '<button class="btn" type="button" data-clear="' + logKey + '">Clear</button>' : "") + "</form></div>" +
+    (slice.length
+      ? '<div class="table-scroll"><table><thead><tr>' + columns.map((name) => "<th>" + esc(name) + "</th>").join("") + "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
+        '<div class="pager"><span>Showing ' + first + "–" + last + " of " + filtered.length + "</span>" +
+        '<button class="btn" type="button" data-page="prev" data-log="' + logKey + '"' + (page === 0 ? " disabled" : "") + ">Previous</button>" +
+        '<button class="btn" type="button" data-page="next" data-log="' + logKey + '"' + (last >= filtered.length ? " disabled" : "") + ">Next</button></div>"
+      : emptyState(total ? "No rows match. Clear the search or pick another stage." : "No rows returned. Check that the table name is right and that your Dataverse role can read it.")) +
+    "</section>";
+}
+
+function dashboardMarkup() {
+  const rows = state.logs.quote.rows;
+  const summary = metrics(rows);
+  const cards = [
+    { label: "Total quotes", value: String(summary.total), note: "Rows in " + cfg.quoteTable },
+    { label: "Needs assignment", value: String(summary.needsAssignment), note: "Submitted or ready to assign" },
+    { label: "Awaiting approval", value: String(summary.awaitingApproval), note: "ASAP manager approval pending" },
+    { label: "Pipeline value", value: money(summary.pipelineValue), note: "Sum of cr714_wbsellpricetotal" },
+  ].map((card) => '<article class="card"><p>' + esc(card.label) + "</p><strong>" + esc(card.value) + "</strong><small>" + esc(card.note) + "</small></article>").join("");
+
+  const recent = rows.slice(0, 10).map(quoteRowMarkup).join("");
+  return '<div class="hero"><div><h1>Dashboard</h1><p class="muted" style="margin:0">Live Dataverse quote activity' + (state.loadedAt ? " · read " + esc(new Date(state.loadedAt).toLocaleTimeString("en-US")) : "") + "</p></div></div>" +
+    (state.error ? '<div class="notice error">' + esc(state.error) + "</div>" : "") +
+    '<div class="cards">' + cards + "</div>" +
+    '<section class="panel"><div class="panel-head"><h2>Newest quote log rows</h2><span class="muted">' + summary.total + " tracked</span></div>" +
+    (recent
+      ? '<div class="table-scroll"><table><thead><tr><th>Created</th><th>Q-number</th><th>Company</th><th>Customer #</th><th>Type</th><th>Priority</th><th>Submitted by</th><th>Items</th><th>Assigned to</th><th>GP %</th><th>Stage</th></tr></thead><tbody>' + recent + "</tbody></table></div>"
+      : emptyState("No rows yet. Use Refresh to read the Quote Log from Dataverse.")) +
+    "</section>";
+}
+
+function settingsMarkup() {
+  return '<div class="hero"><div><h1>Settings</h1><p class="muted" style="margin:0">Connection details for this browser.</p></div></div>' +
+    '<section class="panel"><div class="panel-head"><h2>Dataverse connection</h2></div><div class="panel-body">' +
+    '<div class="field-grid">' +
+    '<label>Tenant ID<input id="s-tenant" value="' + esc(cfg.tenantId) + '" /></label>' +
+    '<label>Application (client) ID<input id="s-client" value="' + esc(cfg.clientId) + '" /></label>' +
+    '<label>Dataverse URL<input id="s-url" value="' + esc(cfg.dataverseUrl) + '" /></label>' +
+    '<label>Quote Log table<input id="s-quote-table" value="' + esc(cfg.quoteTable) + '" /></label>' +
+    '<label>MDM Log table<input id="s-mdm-table" value="' + esc(cfg.mdmTable) + '" /></label>' +
+    '<p class="field-note">Redirect URI to register on the app registration: <strong>' + esc(redirectUri()) + "</strong></p>" +
+    '<p class="field-note">Reads are capped at ' + LIMITS.maxRows.toLocaleString("en-US") + " rows per log, " + LIMITS.maxPages + " pages and " + Math.round(LIMITS.timeoutMs / 1000) + " seconds. The data is read as you, so Dataverse security roles still apply.</p>" +
+    '<div><button class="btn primary" id="s-save" type="button">Save and reload</button></div>' +
+    "</div></div></section>";
+}
+
+function render() {
+  const titles = { dashboard: "Dashboard", quote: "Quote Log", mdm: "MDM Log", settings: "Settings" };
+  el("view-title").textContent = titles[state.view];
+  for (const button of el("nav").querySelectorAll("button")) {
+    button.classList.toggle("active", button.dataset.view === state.view);
+  }
+  const view = el("view");
+  if (state.view === "settings") {
+    view.innerHTML = settingsMarkup();
+    el("s-save").addEventListener("click", saveSettings);
+    return;
+  }
+  if (state.view === "dashboard") {
+    view.innerHTML = dashboardMarkup();
+    bindRows(view);
+    return;
+  }
+  view.innerHTML = logViewMarkup(state.view);
+  bindLogView(view, state.view);
+}
+
+function bindRows(container) {
+  container.querySelectorAll("tr.row").forEach((row) => {
+    const open = () => openDrawer(row.dataset.log, row.dataset.id);
+    row.addEventListener("click", open);
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        open();
+      }
+    });
+  });
+}
+
+function bindLogView(container, logKey) {
+  bindRows(container);
+  container.querySelectorAll("[data-stage]").forEach((card) => {
+    card.addEventListener("click", () => {
+      state.logs[logKey].stage = card.dataset.stage;
+      state.logs[logKey].page = 0;
+      render();
+    });
+  });
+  const form = container.querySelector("form.filters");
+  if (form) {
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      state.logs[logKey].search = form.elements.search.value.trim();
+      state.logs[logKey].page = 0;
+      render();
+    });
+  }
+  const clear = container.querySelector("[data-clear]");
+  if (clear) {
+    clear.addEventListener("click", () => {
+      state.logs[logKey].search = "";
+      state.logs[logKey].stage = "";
+      state.logs[logKey].page = 0;
+      render();
+    });
+  }
+  container.querySelectorAll("[data-page]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const direction = button.dataset.page === "next" ? 1 : -1;
+      state.logs[logKey].page = Math.max(0, state.logs[logKey].page + direction);
+      render();
+    });
+  });
+}
+
+function openDrawer(logKey, id) {
+  const row = state.logs[logKey].rows.find((candidate) => candidate.id === id);
+  if (!row) return;
+  const title = logKey === "quote"
+    ? (display(row, "cr714_quotenumber") || "No Q-number yet") + (display(row, "cr714_companyname") ? " · " + display(row, "cr714_companyname") : "")
+    : (display(row, "cr714_accountnumber") || "No account") + (display(row, "cr714_requestorname") ? " · " + display(row, "cr714_requestorname") : "");
+  el("drawer-title").textContent = title;
+  // [Dataverse map] assignment write-back: cr714_assignedto + cr714_dateassigned.
+  const assignment = logKey === "quote"
+    ? '<form class="assign" id="assign-form"><label for="assignee">Assign in Dataverse (' + esc(cfg.quoteTable) + '.cr714_assignedto)' +
+      '<input id="assignee" name="assignedTo" type="text" value="' + esc(row.values.cr714_assignedto || "") + '" placeholder="Quoter name or email" /></label>' +
+      '<div class="assign-actions"><button class="btn primary" type="submit">Save to Dataverse</button><span class="feedback" id="assign-feedback" role="status"></span></div></form>'
+    : "";
+  const columns = [...new Set([...Object.keys(row.values), ...Object.keys(row.labels)])].sort();
+  el("drawer-body").innerHTML = assignment + '<dl class="fields">' +
+    columns.map((column) => "<div><dt>" + esc(LABELS[column] || column) + "</dt><dd>" + esc(display(row, column) || "—") + "</dd></div>").join("") +
+    "</dl>";
+  el("drawer").hidden = false;
+  el("backdrop").hidden = false;
+  el("drawer-close").focus();
+
+  const form = el("assign-form");
+  if (form) {
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const feedback = el("assign-feedback");
+      const button = form.querySelector("button[type='submit']");
+      button.disabled = true;
+      feedback.className = "feedback";
+      feedback.textContent = "Saving to Dataverse…";
+      const assignedTo = form.elements.assignedTo.value.trim();
+      try {
+        const dateAssigned = await assignQuote(row.id, assignedTo);
+        row.values.cr714_assignedto = assignedTo || undefined;
+        row.values.cr714_dateassigned = dateAssigned;
+        if (!assignedTo) delete row.values.cr714_assignedto;
+        delete row.labels.cr714_assignedto;
+        feedback.className = "feedback ok";
+        feedback.textContent = assignedTo ? "Assigned to " + assignedTo + "." : "Assignment cleared.";
+        render();
+      } catch (error) {
+        feedback.className = "feedback bad";
+        feedback.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+}
+
+function closeDrawer() {
+  el("drawer").hidden = true;
+  el("backdrop").hidden = true;
+}
+
+function saveSettings() {
+  cfg = {
+    ...cfg,
+    tenantId: el("s-tenant").value.trim(),
+    clientId: el("s-client").value.trim(),
+    dataverseUrl: el("s-url").value.trim().replace(/\/+$/, ""),
+    quoteTable: el("s-quote-table").value.trim(),
+    mdmTable: el("s-mdm-table").value.trim(),
+  };
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    localStorage.removeItem("qf-pages-entitysets");
+  } catch {
+    /* ignore storage limits */
+  }
+  location.reload();
+}
+
+function saveLockSettings() {
+  cfg = {
+    ...cfg,
+    tenantId: el("cfg-tenant").value.trim(),
+    clientId: el("cfg-client").value.trim(),
+    dataverseUrl: el("cfg-url").value.trim().replace(/\/+$/, ""),
+    quoteTable: el("cfg-quote-table").value.trim(),
+    mdmTable: el("cfg-mdm-table").value.trim(),
+  };
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    localStorage.removeItem("qf-pages-entitysets");
+  } catch {
+    /* ignore storage limits */
+  }
+  location.reload();
+}
+
+async function unlock() {
+  el("lock").hidden = true;
+  el("shell").hidden = false;
+  el("who-name").textContent = account.name || account.username || "Signed in";
+  el("who-email").textContent = account.username || "";
+  setStatus("Reading Dataverse…", "warn");
+  render();
+  await refreshAll();
+}
+
+function showLock(message) {
+  el("shell").hidden = true;
+  el("lock").hidden = false;
+  el("cfg-tenant").value = cfg.tenantId;
+  el("cfg-client").value = cfg.clientId;
+  el("cfg-url").value = cfg.dataverseUrl;
+  el("cfg-quote-table").value = cfg.quoteTable;
+  el("cfg-mdm-table").value = cfg.mdmTable;
+  el("cfg-redirect").textContent = "Redirect URI to register on the app registration: " + redirectUri();
+  showLockError(message || "");
+}
+
+async function start() {
+  el("sign-in").addEventListener("click", async () => {
+    showLockError("");
+    try {
+      const app = await initMsal();
+      await app.loginRedirect({ scopes: [scope()], prompt: "select_account" });
+    } catch (error) {
+      showLockError(error.message);
+    }
+  });
+  el("save-config").addEventListener("click", saveLockSettings);
+  el("refresh").addEventListener("click", () => refreshAll());
+  el("export").addEventListener("click", () => exportCsv());
+  el("sign-out").addEventListener("click", () => signOut());
+  el("drawer-close").addEventListener("click", closeDrawer);
+  el("backdrop").addEventListener("click", closeDrawer);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !el("drawer").hidden) closeDrawer();
+  });
+  el("nav").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-view]");
+    if (!button) return;
+    state.view = button.dataset.view;
+    render();
+  });
+
+  try {
+    const app = await initMsal();
+    const result = await app.handleRedirectPromise();
+    account = (result && result.account) || app.getActiveAccount() || app.getAllAccounts()[0] || null;
+    if (account) {
+      app.setActiveAccount(account);
+      token = (result && result.accessToken) || null;
+      await unlock();
+      return;
+    }
+    showLock("");
+  } catch (error) {
+    showLock(error.message);
+  }
+}
+
+function exportCsv() {
+  const logKey = state.view === "mdm" ? "mdm" : "quote";
+  const rows = state.logs[logKey].rows;
+  if (!rows.length) {
+    setStatus("Nothing to export yet", "warn");
+    return;
+  }
+  const blob = new Blob([csvFor(logKey, rows)], { type: "text/csv;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "QuoteFlow-" + logKey + "-log-" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+}
+
+async function signOut() {
+  try {
+    await fetch("/");
+  } catch {
+    /* nothing to call on Pages */
+  }
+  try {
+    if (msalApp) {
+      if (typeof msalApp.clearCache === "function") await msalApp.clearCache();
+      if (account) await msalApp.logoutRedirect({ account, onRedirectNavigate: () => false });
+    }
+  } catch {
+    /* no Microsoft session to clear */
+  }
+  token = null;
+  account = null;
+  location.reload();
+}
+
+start();
+</script>
+</body>
+</html>
